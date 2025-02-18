@@ -1,0 +1,25 @@
+## ER диаграмма для User Service
+
+```mermaid
+erDiagram
+  USER {
+    int id PK
+    string username
+    string email
+    string password_hash
+    datetime created_at
+    datetime updated_at
+  }
+
+  ROLE {
+    int id PK
+    string name
+  }
+
+  USER_ROLE {
+    int user_id FK
+    int role_id FK
+  }
+
+  USER ||--o{ USER_ROLE : "имеет"
+  ROLE ||--o{ USER_ROLE : "принадлежит"

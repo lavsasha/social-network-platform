@@ -1,0 +1,118 @@
+specification {
+    element person {
+        style {
+            shape person
+            color green
+        }
+    }
+    element softwareSystem
+    element container
+    element component
+}
+
+model {
+  // Контекст
+  user = person "Пользователь" "Пользователь социальной сети"
+
+  socialNetwork = softwareSystem "Социальная сеть" {
+    // Контейнеры
+    apiGateway = container "API Gateway" {
+      description "Маршрутизация запросов и управление доступом"
+      technology "Python, FastAPI"
+    }
+
+    userService = container "User Service" {
+      description "Управление пользователями и аутентификация"
+      technology "Python, FastAPI"
+
+      component userController "User Controller" "Обрабатывает HTTP запросы"
+      component authService "Auth Service" "Управляет аутентификацией"
+      component userServiceComponent "User Service" "Управляет данными пользователей"
+      component userRepository "User Repository" "Доступ к данным пользователей"
+    }
+
+    postService = container "Post Service" {
+      description "Управление постами и комментариями"
+      technology "Python, FastAPI"
+
+      component postController "Post Controller" "Обрабатывает HTTP запросы"
+      component commentService "Comment Service" "Управляет комментариями"
+      component postRepository "Post Repository" "Доступ к данным постов"
+      component commentRepository "Comment Repository" "Доступ к данным комментариев"
+    }
+
+    statisticService = container "Statistic Service" {
+      description "Сбор и анализ статистики (лайки, просмотры, комментарии)"
+      technology "Python, FastAPI"
+
+      component statisticController "Statistic Controller" "Обрабатывает HTTP запросы"
+      component eventProcessor "Event Processor" "Обрабатывает события (лайки, просмотры, комментарии)"
+      component statisticRepository "Statistic Repository" "Доступ к данным статистики"
+    }
+
+    postgresDbUser = container "PostgreSQL (User)" {
+      description "Хранение данных пользователей"
+      technology "Database"
+      style {
+        shape cylinder
+      }
+    }
+
+    postgresDbPost = container "PostgreSQL (Post)" {
+      description "Хранение данных постов и комментариев"
+      technology "Database"
+      style {
+        shape cylinder
+      }
+    }
+
+    clickhouseDb = container "ClickHouse" {
+      description "Хранение аналитических данных (статистика)"
+      technology "Database"
+      style {
+        shape cylinder
+      }
+    }
+
+    kafka = container "Kafka" {
+      description "Обмен событиями между сервисами"
+      technology "Message Broker"
+      style {
+        shape queue
+      }
+    }
+  }
+
+  // Взаимодействия
+  user -> socialNetwork.apiGateway "Использует" "HTTPS"
+  socialNetwork.apiGateway -> socialNetwork.userService "Маршрутизирует" "JSON/HTTPS"
+  socialNetwork.apiGateway -> socialNetwork.postService "Маршрутизирует" "JSON/HTTPS"
+  socialNetwork.apiGateway -> socialNetwork.statisticService "Маршрутизирует" "JSON/HTTPS"
+
+  socialNetwork.userService -> socialNetwork.postgresDbUser "Читает/Пишет" "SQL"
+  socialNetwork.postService -> socialNetwork.postgresDbPost "Читает/Пишет" "SQL"
+  socialNetwork.statisticService -> socialNetwork.clickhouseDb "Читает/Пишет" "SQL"
+
+  socialNetwork.userService -> socialNetwork.kafka "Публикует/Подписывается" "user_events"
+  socialNetwork.postService -> socialNetwork.kafka "Публикует/Подписывается" "post_events"
+  socialNetwork.statisticService -> socialNetwork.kafka "Подписывается" "user_events, post_events"
+
+  // Внутренние взаимодействия сервисов
+  socialNetwork.userService.userController -> socialNetwork.userService.authService "Использует"
+  socialNetwork.userService.userController -> socialNetwork.userService.userServiceComponent "Использует"
+  socialNetwork.userService.authService -> socialNetwork.userService.userServiceComponent "Использует"
+  socialNetwork.userService.userServiceComponent -> socialNetwork.userService.userRepository "Использует"
+
+  socialNetwork.postService.postController -> socialNetwork.postService.commentService "Использует"
+  socialNetwork.postService.postController -> socialNetwork.postService.postRepository "Использует"
+  socialNetwork.postService.commentService -> socialNetwork.postService.commentRepository "Использует"
+
+  socialNetwork.statisticService.statisticController -> socialNetwork.statisticService.eventProcessor "Использует"
+  socialNetwork.statisticService.eventProcessor -> socialNetwork.statisticService.statisticRepository "Использует"
+}
+
+views {
+   view index {
+        include *
+    }
+}

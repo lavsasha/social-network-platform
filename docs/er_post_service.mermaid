@@ -1,0 +1,30 @@
+## ER диаграмма для Post Service
+
+```mermaid
+erDiagram
+  POST {
+    int id PK
+    string title
+    string content
+    int user_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  COMMENT {
+    int id PK
+    string text
+    int post_id FK
+    int user_id FK
+    datetime created_at
+    datetime updated_at
+  }
+
+  POST_LIKE {
+    int post_id FK
+    int user_id FK
+    datetime created_at
+  }
+
+  POST ||--o{ COMMENT : "имеет"
+  POST ||--o{ POST_LIKE : "имеет"

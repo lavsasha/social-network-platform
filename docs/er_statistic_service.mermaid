@@ -1,0 +1,29 @@
+## ER диаграмма для Statistic Service
+
+```mermaid
+erDiagram
+  STATISTIC {
+    int id PK
+    int post_id FK
+    string event_type
+    int user_id FK
+    datetime event_time
+  }
+
+  DAILY_STATISTIC {
+    date event_date
+    int post_id FK
+    int likes_count
+    int views_count
+    int comments_count
+  }
+
+  USER_STATISTIC {
+    int user_id FK
+    int total_likes
+    int total_views
+    int total_comments
+  }
+
+  STATISTIC ||--o{ DAILY_STATISTIC : "агрегирует"
+  STATISTIC ||--o{ USER_STATISTIC : "агрегирует"
