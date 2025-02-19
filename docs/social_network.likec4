@@ -71,7 +71,7 @@ user -> socialNetwork.apiGateway "Использует (HTTPS)"
 socialNetwork.apiGateway -> socialNetwork.userService "Запрос на регистрацию/аутентификацию (JSON/HTTPS)"
 socialNetwork.apiGateway -> socialNetwork.postService "Запрос на посты и комментарии (JSON/HTTPS)"
 socialNetwork.apiGateway -> socialNetwork.statisticService "Запрос на статистику (JSON/HTTPS)"
-socialNetwork.apiGateway -> socialNetwork.kafka "Отправка событий (лайки и просмотры) (JSON/HTTPS)"
+socialNetwork.apiGateway -> socialNetwork.kafka "Публикация событий (лайки и просмотры) (JSON/HTTPS)"
 
 socialNetwork.userService -> socialNetwork.postgresDb "Чтение/запись данных пользователей (SQL)"
 
