@@ -6,7 +6,6 @@ POST {
     text content
     datetime created_at
     datetime updated_at
-    string status
     string image_url
 }
 
@@ -17,29 +16,8 @@ POST_COMMENT {
     text content
     datetime created_at
     datetime updated_at
-    string status
-    string user_agent
-    string ip
-    string session_id
 }
 
-POST_LIKE {
-    uuid post_id FK
-    uuid user_id FK
-    datetime created_at
-    string user_agent
-    string ip
-    string session_id
-}
-
-POST_VIEW {
-    uuid post_id FK
-    uuid user_id FK
-    datetime view_time
-    string user_agent
-    string ip
-    string session_id
-}
 
 TAG {
     uuid tag_id PK
@@ -52,14 +30,9 @@ TAG {
 POST_TAG {
     uuid post_id FK
     uuid tag_id FK
-    datetime assigned_at
-    uuid assigned_by FK
-    string status
 }
 
 
-POST ||--o{ POST_COMMENT : "имеет"
-POST ||--o{ POST_LIKE : "имеет"
-POST ||--o{ POST_VIEW : "имеет"
-POST ||--o{ POST_TAG : "имеет"
-POST_TAG ||--|| TAG : "содержит"
+POST ||--o{ POST_COMMENT : ""
+POST ||--o{ POST_TAG : ""
+POST_TAG }o--|| TAG : ""

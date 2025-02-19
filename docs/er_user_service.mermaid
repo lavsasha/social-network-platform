@@ -1,6 +1,7 @@
 erDiagram
   USER {
     uuid user_id PK
+    uuid role_id FK
     string email
     string hashed_password
     string first_name
@@ -10,19 +11,10 @@ erDiagram
     bool is_active
   }
 
-  USER_SESSION {
-    uuid session_id PK
-    uuid user_id FK
-    datetime login_time
-    datetime logout_time
-    string user_agent
-    string ip_address
-    bool is_terminated
-  }
 
   USER_SUBSCRIPTION {
-    uuid subscriber_id FK
-    uuid subscribed_to_id FK
+    uuid subscriber_id PK
+    uuid subscribed_to_id PK
     datetime subscribed_at
     datetime unsubscribed_at
     bool is_mutual
@@ -39,6 +31,14 @@ erDiagram
     datetime date_of_birth
   }
 
-  USER ||--o{ USER_SESSION : "создаёт"
-  USER ||--o{ USER_SUBSCRIPTION : "подписывается"
-  USER ||--o{ USER_PROFILE : "имеет"
+  USER_ROLE {
+    uuid role_id PK
+    string role_name
+    string role_description
+    int access_level
+    datetime assigned_at
+  }
+
+  USER ||--o{ USER_SUBSCRIPTION : ""
+  USER ||--|| USER_PROFILE : ""
+  USER }o--|| USER_ROLE : ""

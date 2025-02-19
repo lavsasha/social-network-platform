@@ -24,7 +24,7 @@ model {
     }
 
     postService = container "Post Service" {
-      description "Управление постами, комментариями, лайками и просмотрами"
+      description "Управление постами и комментариями"
       technology "Python, FastAPI"
     }
 
@@ -42,7 +42,7 @@ model {
     }
 
     cassandraDb = container "Cassandra" {
-      description "Хранение данных постов, комментариев, лайков и просмотров"
+      description "Хранение данных о постах и комментариях"
       technology "Post Service Database"
       style {
         shape cylinder
@@ -68,18 +68,18 @@ model {
 
 user -> socialNetwork.apiGateway "Использует (HTTPS)"
 
-socialNetwork.apiGateway -> socialNetwork.userService "Запрос на аутентификацию (JSON/HTTPS)"
-socialNetwork.apiGateway -> socialNetwork.postService "Запрос на посты и взаимодействия (JSON/HTTPS)"
+socialNetwork.apiGateway -> socialNetwork.userService "Запрос на регистрацию/аутентификацию (JSON/HTTPS)"
+socialNetwork.apiGateway -> socialNetwork.postService "Запрос на посты и комментарии (JSON/HTTPS)"
 socialNetwork.apiGateway -> socialNetwork.statisticService "Запрос на статистику (JSON/HTTPS)"
-socialNetwork.apiGateway -> socialNetwork.kafka "Отправка событий (JSON/HTTPS)"
+socialNetwork.apiGateway -> socialNetwork.kafka "Отправка событий (лайки и просмотры) (JSON/HTTPS)"
 
 socialNetwork.userService -> socialNetwork.postgresDb "Чтение/запись данных пользователей (SQL)"
 
-socialNetwork.postService -> socialNetwork.cassandraDb "Чтение/запись постов и взаимодействий (SQL)"
-socialNetwork.postService -> socialNetwork.kafka "Публикация событий постов"
+socialNetwork.postService -> socialNetwork.cassandraDb "Чтение/запись постов и комментариев (SQL)"
+socialNetwork.postService -> socialNetwork.kafka "Публикация событий (комментарии)"
 
 socialNetwork.statisticService -> socialNetwork.clickhouseDb "Чтение/запись аналитики (SQL)"
-socialNetwork.statisticService -> socialNetwork.kafka "Подписка на события постов"
+socialNetwork.statisticService -> socialNetwork.kafka "Подписка на события"
 }
 
 views {

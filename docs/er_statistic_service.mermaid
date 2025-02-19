@@ -5,9 +5,6 @@ STATISTIC_EVENT {
     uuid user_id FK
     string event_type
     datetime event_time
-    string user_agent
-    string ip
-    string event_details
 }
 
 DAILY_STATISTIC {
@@ -19,12 +16,12 @@ DAILY_STATISTIC {
 }
 
 USER_STATISTIC {
-    uuid user_id FK
+    uuid user_id PK
     int total_likes
     int total_views
     int total_comments
     datetime last_updated
 }
 
-DAILY_STATISTIC ||--o{ STATISTIC_EVENT : "формирует"
-USER_STATISTIC ||--o{ STATISTIC_EVENT : "формирует"
+DAILY_STATISTIC ||--o{ STATISTIC_EVENT : ""
+USER_STATISTIC ||--o{ STATISTIC_EVENT : ""
