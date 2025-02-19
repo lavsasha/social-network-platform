@@ -76,7 +76,7 @@ socialNetwork.apiGateway -> socialNetwork.kafka "Публикация событ
 socialNetwork.userService -> socialNetwork.postgresDb "Чтение/запись данных пользователей (SQL)"
 
 socialNetwork.postService -> socialNetwork.cassandraDb "Чтение/запись постов и комментариев (SQL)"
-socialNetwork.postService -> socialNetwork.kafka "Публикация событий (комментарии)"
+socialNetwork.postService -> socialNetwork.kafka "Публикация событий (комментарии) (JSON/HTTPS)"
 
 socialNetwork.statisticService -> socialNetwork.clickhouseDb "Чтение/запись аналитики (SQL)"
 socialNetwork.statisticService -> socialNetwork.kafka "Подписка на события"
