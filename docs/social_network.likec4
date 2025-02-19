@@ -7,60 +7,43 @@ specification {
     }
     element softwareSystem
     element container
-    element component
 }
 
 model {
-  // Контекст
   user = person "Пользователь" "Пользователь социальной сети"
 
   socialNetwork = softwareSystem "Социальная сеть" {
-    // Контейнеры
     apiGateway = container "API Gateway" {
       description "Маршрутизация запросов и управление доступом"
       technology "Python, FastAPI"
     }
 
-    userService = container "User Service" {
-      description "Управление пользователями и аутентификация"
+    userService = container "User  Service" {
+      description "Управление пользователями и аутентификацией"
       technology "Python, FastAPI"
-
-      component userController "User Controller" "Обрабатывает HTTP запросы"
-      component authService "Auth Service" "Управляет аутентификацией"
-      component userServiceComponent "User Service" "Управляет данными пользователей"
-      component userRepository "User Repository" "Доступ к данным пользователей"
     }
 
     postService = container "Post Service" {
-      description "Управление постами и комментариями"
+      description "Управление постами, комментариями, лайками и просмотрами"
       technology "Python, FastAPI"
-
-      component postController "Post Controller" "Обрабатывает HTTP запросы"
-      component commentService "Comment Service" "Управляет комментариями"
-      component postRepository "Post Repository" "Доступ к данным постов"
-      component commentRepository "Comment Repository" "Доступ к данным комментариев"
     }
 
     statisticService = container "Statistic Service" {
-      description "Сбор и анализ статистики (лайки, просмотры, комментарии)"
+      description "Сбор и анализ статистики (комментарии, лайки, просмотры)"
       technology "Python, FastAPI"
-
-      component statisticController "Statistic Controller" "Обрабатывает HTTP запросы"
-      component eventProcessor "Event Processor" "Обрабатывает события (лайки, просмотры, комментарии)"
-      component statisticRepository "Statistic Repository" "Доступ к данным статистики"
     }
 
-    postgresDbUser = container "PostgreSQL (User)" {
+    postgresDb = container "PostgreSQL" {
       description "Хранение данных пользователей"
-      technology "Database"
+      technology "User  Service Database"
       style {
         shape cylinder
       }
     }
 
-    postgresDbPost = container "PostgreSQL (Post)" {
-      description "Хранение данных постов и комментариев"
-      technology "Database"
+    cassandraDb = container "Cassandra" {
+      description "Хранение данных постов, комментариев, лайков и просмотров"
+      technology "Post Service Database"
       style {
         shape cylinder
       }
@@ -68,7 +51,7 @@ model {
 
     clickhouseDb = container "ClickHouse" {
       description "Хранение аналитических данных (статистика)"
-      technology "Database"
+      technology "Statistic Service Database"
       style {
         shape cylinder
       }
@@ -76,39 +59,27 @@ model {
 
     kafka = container "Kafka" {
       description "Обмен событиями между сервисами"
-      technology "Message Broker"
+      technology "Statistic Message Broker"
       style {
         shape queue
       }
     }
   }
 
-  // Взаимодействия
-  user -> socialNetwork.apiGateway "Использует" "HTTPS"
-  socialNetwork.apiGateway -> socialNetwork.userService "Маршрутизирует" "JSON/HTTPS"
-  socialNetwork.apiGateway -> socialNetwork.postService "Маршрутизирует" "JSON/HTTPS"
-  socialNetwork.apiGateway -> socialNetwork.statisticService "Маршрутизирует" "JSON/HTTPS"
+user -> socialNetwork.apiGateway "Использует (HTTPS)"
 
-  socialNetwork.userService -> socialNetwork.postgresDbUser "Читает/Пишет" "SQL"
-  socialNetwork.postService -> socialNetwork.postgresDbPost "Читает/Пишет" "SQL"
-  socialNetwork.statisticService -> socialNetwork.clickhouseDb "Читает/Пишет" "SQL"
+socialNetwork.apiGateway -> socialNetwork.userService "Запрос на аутентификацию (JSON/HTTPS)"
+socialNetwork.apiGateway -> socialNetwork.postService "Запрос на посты и взаимодействия (JSON/HTTPS)"
+socialNetwork.apiGateway -> socialNetwork.statisticService "Запрос на статистику (JSON/HTTPS)"
+socialNetwork.apiGateway -> socialNetwork.kafka "Отправка событий (JSON/HTTPS)"
 
-  socialNetwork.userService -> socialNetwork.kafka "Публикует/Подписывается" "user_events"
-  socialNetwork.postService -> socialNetwork.kafka "Публикует/Подписывается" "post_events"
-  socialNetwork.statisticService -> socialNetwork.kafka "Подписывается" "user_events, post_events"
+socialNetwork.userService -> socialNetwork.postgresDb "Чтение/запись данных пользователей (SQL)"
 
-  // Внутренние взаимодействия сервисов
-  socialNetwork.userService.userController -> socialNetwork.userService.authService "Использует"
-  socialNetwork.userService.userController -> socialNetwork.userService.userServiceComponent "Использует"
-  socialNetwork.userService.authService -> socialNetwork.userService.userServiceComponent "Использует"
-  socialNetwork.userService.userServiceComponent -> socialNetwork.userService.userRepository "Использует"
+socialNetwork.postService -> socialNetwork.cassandraDb "Чтение/запись постов и взаимодействий (SQL)"
+socialNetwork.postService -> socialNetwork.kafka "Публикация событий постов"
 
-  socialNetwork.postService.postController -> socialNetwork.postService.commentService "Использует"
-  socialNetwork.postService.postController -> socialNetwork.postService.postRepository "Использует"
-  socialNetwork.postService.commentService -> socialNetwork.postService.commentRepository "Использует"
-
-  socialNetwork.statisticService.statisticController -> socialNetwork.statisticService.eventProcessor "Использует"
-  socialNetwork.statisticService.eventProcessor -> socialNetwork.statisticService.statisticRepository "Использует"
+socialNetwork.statisticService -> socialNetwork.clickhouseDb "Чтение/запись аналитики (SQL)"
+socialNetwork.statisticService -> socialNetwork.kafka "Подписка на события постов"
 }
 
 views {

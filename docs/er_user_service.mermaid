@@ -1,25 +1,44 @@
-## ER диаграмма для User Service
-
-```mermaid
 erDiagram
   USER {
-    int id PK
-    string username
+    uuid user_id PK
     string email
-    string password_hash
+    string hashed_password
+    string first_name
+    string last_name
     datetime created_at
     datetime updated_at
+    bool is_active
   }
 
-  ROLE {
-    int id PK
-    string name
+  USER_SESSION {
+    uuid session_id PK
+    uuid user_id FK
+    datetime login_time
+    datetime logout_time
+    string user_agent
+    string ip_address
+    bool is_terminated
   }
 
-  USER_ROLE {
-    int user_id FK
-    int role_id FK
+  USER_SUBSCRIPTION {
+    uuid subscriber_id FK
+    uuid subscribed_to_id FK
+    datetime subscribed_at
+    datetime unsubscribed_at
+    bool is_mutual
   }
 
-  USER ||--o{ USER_ROLE : "имеет"
-  ROLE ||--o{ USER_ROLE : "принадлежит"
+  USER_PROFILE {
+    uuid profile_id PK
+    uuid user_id FK
+    string avatar_url
+    string about_me
+    string city
+    string education
+    string interests
+    datetime date_of_birth
+  }
+
+  USER ||--o{ USER_SESSION : "создаёт"
+  USER ||--o{ USER_SUBSCRIPTION : "подписывается"
+  USER ||--o{ USER_PROFILE : "имеет"

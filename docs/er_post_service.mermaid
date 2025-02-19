@@ -1,30 +1,65 @@
-## ER диаграмма для Post Service
-
-```mermaid
 erDiagram
-  POST {
-    int id PK
+POST {
+    uuid post_id PK
+    uuid user_id FK
     string title
-    string content
-    int user_id FK
+    text content
     datetime created_at
     datetime updated_at
-  }
+    string status
+    string image_url
+}
 
-  COMMENT {
-    int id PK
-    string text
-    int post_id FK
-    int user_id FK
+POST_COMMENT {
+    uuid comment_id PK
+    uuid post_id FK
+    uuid user_id FK
+    text content
     datetime created_at
     datetime updated_at
-  }
+    string status
+    string user_agent
+    string ip
+    string session_id
+}
 
-  POST_LIKE {
-    int post_id FK
-    int user_id FK
+POST_LIKE {
+    uuid post_id FK
+    uuid user_id FK
     datetime created_at
-  }
+    string user_agent
+    string ip
+    string session_id
+}
 
-  POST ||--o{ COMMENT : "имеет"
-  POST ||--o{ POST_LIKE : "имеет"
+POST_VIEW {
+    uuid post_id FK
+    uuid user_id FK
+    datetime view_time
+    string user_agent
+    string ip
+    string session_id
+}
+
+TAG {
+    uuid tag_id PK
+    string tag_name
+    string tag_description
+    string created_by
+    datetime created_at
+}
+
+POST_TAG {
+    uuid post_id FK
+    uuid tag_id FK
+    datetime assigned_at
+    uuid assigned_by FK
+    string status
+}
+
+
+POST ||--o{ POST_COMMENT : "имеет"
+POST ||--o{ POST_LIKE : "имеет"
+POST ||--o{ POST_VIEW : "имеет"
+POST ||--o{ POST_TAG : "имеет"
+POST_TAG ||--|| TAG : "содержит"
