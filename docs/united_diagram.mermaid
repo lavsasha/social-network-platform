@@ -1,0 +1,108 @@
+erDiagram
+  USER {
+    uuid user_id PK
+    uuid role_id FK
+    string email
+    string hashed_password
+    string first_name
+    string last_name
+    datetime created_at
+    datetime updated_at
+    bool is_active
+  }
+
+  USER_SUBSCRIPTION {
+    uuid subscriber_id PK
+    uuid subscribed_to_id PK
+    datetime subscribed_at
+    datetime unsubscribed_at
+    bool is_mutual
+  }
+
+  USER_PROFILE {
+    uuid profile_id PK
+    uuid user_id FK
+    string avatar_url
+    string about_me
+    string city
+    string education
+    string interests
+    datetime date_of_birth
+  }
+
+  USER_ROLE {
+    uuid role_id PK
+    string role_name
+    string role_description
+    int access_level
+    datetime assigned_at
+  }
+
+  POST {
+    uuid post_id PK
+    uuid user_id FK
+    string title
+    text content
+    datetime created_at
+    datetime updated_at
+    string image_url
+  }
+
+  POST_COMMENT {
+    uuid comment_id PK
+    uuid post_id FK
+    uuid user_id FK
+    text content
+    datetime created_at
+    datetime updated_at
+  }
+
+  TAG {
+    uuid tag_id PK
+    string tag_name
+    string tag_description
+    string created_by
+    datetime created_at
+  }
+
+  POST_TAG {
+    uuid post_id FK
+    uuid tag_id FK
+  }
+
+  STATISTIC_EVENT {
+    uuid event_id PK
+    uuid post_id FK
+    uuid user_id FK
+    string event_type
+    datetime event_time
+  }
+
+  DAILY_STATISTIC {
+    date event_date PK
+    uuid post_id FK
+    int likes_count
+    int views_count
+    int comments_count
+  }
+
+  USER_STATISTIC {
+    uuid user_id PK
+    int total_likes
+    int total_views
+    int total_comments
+    datetime last_updated
+  }
+
+  USER ||--o{ USER_SUBSCRIPTION : ""
+  USER ||--|| USER_PROFILE : ""
+  USER }o--|| USER_ROLE : ""
+  USER ||--o{ POST : ""
+  USER ||--o{ POST_COMMENT : ""
+  POST ||--o{ POST_COMMENT : ""
+  POST ||--o{ POST_TAG : ""
+  POST_TAG }o--|| TAG : ""
+  POST ||--o{ DAILY_STATISTIC : ""
+  DAILY_STATISTIC ||--o{ STATISTIC_EVENT : ""
+  USER_STATISTIC ||--o{ STATISTIC_EVENT : ""
+  USER ||--|| USER_STATISTIC : ""

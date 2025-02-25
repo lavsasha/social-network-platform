@@ -1,0 +1,38 @@
+erDiagram
+POST {
+    uuid post_id PK
+    uuid user_id FK
+    string title
+    text content
+    datetime created_at
+    datetime updated_at
+    string image_url
+}
+
+POST_COMMENT {
+    uuid comment_id PK
+    uuid post_id FK
+    uuid user_id FK
+    text content
+    datetime created_at
+    datetime updated_at
+}
+
+
+TAG {
+    uuid tag_id PK
+    string tag_name
+    string tag_description
+    string created_by
+    datetime created_at
+}
+
+POST_TAG {
+    uuid post_id FK
+    uuid tag_id FK
+}
+
+
+POST ||--o{ POST_COMMENT : ""
+POST ||--o{ POST_TAG : ""
+POST_TAG }o--|| TAG : ""

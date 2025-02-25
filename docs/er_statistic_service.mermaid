@@ -1,0 +1,27 @@
+erDiagram
+STATISTIC_EVENT {
+    uuid event_id PK
+    uuid post_id FK
+    uuid user_id FK
+    string event_type
+    datetime event_time
+}
+
+DAILY_STATISTIC {
+    date event_date PK
+    uuid post_id FK
+    int likes_count
+    int views_count
+    int comments_count
+}
+
+USER_STATISTIC {
+    uuid user_id PK
+    int total_likes
+    int total_views
+    int total_comments
+    datetime last_updated
+}
+
+DAILY_STATISTIC ||--o{ STATISTIC_EVENT : ""
+USER_STATISTIC ||--o{ STATISTIC_EVENT : ""

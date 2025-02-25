@@ -1,0 +1,44 @@
+erDiagram
+  USER {
+    uuid user_id PK
+    uuid role_id FK
+    string email
+    string hashed_password
+    string first_name
+    string last_name
+    datetime created_at
+    datetime updated_at
+    bool is_active
+  }
+
+
+  USER_SUBSCRIPTION {
+    uuid subscriber_id PK
+    uuid subscribed_to_id PK
+    datetime subscribed_at
+    datetime unsubscribed_at
+    bool is_mutual
+  }
+
+  USER_PROFILE {
+    uuid profile_id PK
+    uuid user_id FK
+    string avatar_url
+    string about_me
+    string city
+    string education
+    string interests
+    datetime date_of_birth
+  }
+
+  USER_ROLE {
+    uuid role_id PK
+    string role_name
+    string role_description
+    int access_level
+    datetime assigned_at
+  }
+
+  USER ||--o{ USER_SUBSCRIPTION : ""
+  USER ||--|| USER_PROFILE : ""
+  USER }o--|| USER_ROLE : ""
