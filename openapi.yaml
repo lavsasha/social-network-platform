@@ -1,0 +1,188 @@
+openapi: 3.0.0
+info:
+  title: User Service API
+  version: 1.0.0
+  description: API for user registration, authentication, and profile management.
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+              required:
+                - login
+                - email
+                - password
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid input data (e.g., login or email already taken)
+        '500':
+          description: Internal server error
+
+  /login:
+    post:
+      summary: Authenticate a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+              required:
+                - login
+                - password
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '401':
+          description: Invalid credentials
+        '500':
+          description: Internal server error
+
+  /profile:
+    get:
+      summary: Get user profile
+      security:
+        - BearerAuth: [ ]
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  login:
+                    type: string
+                  email:
+                    type: string
+                  first_name:
+                    type: string
+                  last_name:
+                    type: string
+                  role:
+                    type: string
+                  profile:
+                    type: object
+                    properties:
+                      avatar_url:
+                        type: string
+                      about_me:
+                        type: string
+                      city:
+                        type: string
+                      education:
+                        type: string
+                      interests:
+                        type: string
+                      date_of_birth:
+                        type: string
+                        format: date-time
+                      phone_number:
+                        type: string
+        '401':
+          description: Unauthorized (missing or invalid token)
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error
+
+    put:
+      summary: Update user profile
+      security:
+        - BearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                profile:
+                  type: object
+                  properties:
+                    avatar_url:
+                      type: string
+                    about_me:
+                      type: string
+                    city:
+                      type: string
+                    education:
+                      type: string
+                    interests:
+                      type: string
+                    date_of_birth:
+                      type: string
+                      format: date-time
+                    phone_number:
+                      type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid input data (e.g., attempting to update login or password)
+        '401':
+          description: Unauthorized (missing or invalid token)
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error
+
+securitySchemes:
+  BearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
