@@ -65,21 +65,6 @@ def register():
         if not is_valid:
             return jsonify({"message": message}), 400
 
-    if 'date_of_birth' in data:
-        is_valid, message = validate_date_of_birth(data['date_of_birth'])
-        if not is_valid:
-            return jsonify({"message": message}), 400
-
-    if 'phone_number' in data:
-        is_valid, message = validate_phone_number(data['phone_number'])
-        if not is_valid:
-            return jsonify({"message": message}), 400
-
-    if 'city' in data:
-        is_valid, message = validate_city(data['city'])
-        if not is_valid:
-            return jsonify({"message": message}), 400
-
     if User.query.filter_by(login=data['login']).first():
         return jsonify({"message": "Login is already taken."}), 400
     if User.query.filter_by(email=data['email']).first():
