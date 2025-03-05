@@ -97,13 +97,6 @@ paths:
                   type: string
                 last_name:
                   type: string
-                date_of_birth:
-                  type: string
-                  format: date
-                phone_number:
-                  type: string
-                city:
-                  type: string
               required:
                 - login
                 - email
