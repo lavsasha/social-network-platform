@@ -170,7 +170,8 @@ def test_register_with_invalid_name(client):
     assert response.status_code == 400
     assert response.json == {"message": "Name can only contain letters, hyphens, and apostrophes."}
 
-@pytest.mark.dependency(depends=["test_register_api", "test_login_api"])
+
+@pytest.mark.dependency(depends=["test_login_api"])
 def test_update_profile_with_invalid_date_of_birth(client):
     response = client.post('/register', json={
         "login": "charliee_chaplin",
@@ -197,7 +198,7 @@ def test_update_profile_with_invalid_date_of_birth(client):
     assert update_response.json == {"message": "Date of birth cannot be in the future."}
 
 
-@pytest.mark.dependency(depends=["test_register_api", "test_login_api"])
+@pytest.mark.dependency(depends=["test_login_api"])
 def test_update_profile_with_invalid_phone_number(client):
     response = client.post('/register', json={
         "login": "edward_sciissorhands",
