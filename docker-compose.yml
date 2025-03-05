@@ -2,25 +2,33 @@ version: '3.8'
 
 services:
   api_gateway:
-    build: ./api-gateway
+    build: ./api_ateway
     ports:
       - "8080:8080"
     volumes:
-      - ./user-service:/app/user-service
+      - ./api_ateway:/app
+      - ./user_service:/app/user_service
     depends_on:
       - user_service
     environment:
+      - PYTHONPATH=/app
       - TZ=Europe/Moscow
+      - USER_SERVICE_URL=http://user_service:5000
+    command: ["./wait-for-it.sh", "user_service:5000", "--", "python", "api_gateway.py"]
 
   user_service:
-    build: ./user-service
+    build: ./user_service
     ports:
       - "5000:5000"
+    volumes:
+      - ./user_service:/app
     depends_on:
       - db
     environment:
+      - PYTHONPATH=/app
       - FLASK_ENV=development
       - TZ=Europe/Moscow
+      - DATABASE_URL=postgresql://user:password@db:5432/user_db
 
   db:
     image: postgres:13
@@ -34,28 +42,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  tests_user_service:
-    build: ./user-service
-    volumes:
-      - ./user-service:/app
-    command: pytest --cov=user_service tests/
-    depends_on:
-      - db
-    environment:
-      - FLASK_ENV=testing
-      - TZ=Europe/Moscow
-
   tests_api_gateway:
-    build: ./api-gateway
+    build: ./api_ateway
     volumes:
-      - ./api-gateway:/app
-      - ./user-service:/app/user-service
-    command: pytest --cov=api_gateway tests/
+      - ./api_ateway:/app
+      - ./user_service:/app/user_service
+    command: ["./wait-for-it.sh", "user_service:5000", "--", "pytest", "--cov=api_ateway.api_gateway", "tests/"]
     depends_on:
       - user_service
     environment:
+      - PYTHONPATH=/app
       - FLASK_ENV=testing
       - TZ=Europe/Moscow
+      - USER_SERVICE_URL=http://user_service:5000
 
 volumes:
   postgres_data:
