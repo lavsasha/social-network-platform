@@ -56,5 +56,19 @@ services:
       - TZ=Europe/Moscow
       - USER_SERVICE_URL=http://user_service:5000
 
+  unit_tests:
+    build: ./user_service
+    volumes:
+      - ./user_service:/app
+      - ./user_service/unit_tests:/app/unit_tests
+    command: [ "pytest", "unit_tests/" ]
+    depends_on:
+        - db
+    environment:
+      - PYTHONPATH=/app
+      - FLASK_ENV=testing
+      - TZ=Europe/Moscow
+      - DATABASE_URL=postgresql://user:password@db:5432/user_db
+
 volumes:
   postgres_data:
