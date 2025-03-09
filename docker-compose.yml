@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  api_gateway:
+    build: ./api_ateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api_ateway:/app
+      - ./user_service:/app/user_service
+    depends_on:
+      - user_service
+    environment:
+      - PYTHONPATH=/app
+      - TZ=Europe/Moscow
+      - USER_SERVICE_URL=http://user_service:5000
+    command: ["./wait-for-it.sh", "user_service:5000", "--", "python", "api_gateway.py"]
+
+  user_service:
+    build: ./user_service
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./user_service:/app
+    depends_on:
+      - db
+    environment:
+      - PYTHONPATH=/app
+      - FLASK_ENV=development
+      - TZ=Europe/Moscow
+      - DATABASE_URL=postgresql://user:password@db:5432/user_db
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: user_db
+      TZ: Europe/Moscow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  tests_api_gateway:
+    build: ./api_ateway
+    volumes:
+      - ./api_ateway:/app
+      - ./user_service:/app/user_service
+    command: ["./wait-for-it.sh", "user_service:5000", "--", "pytest", "--cov=api_ateway.api_gateway", "tests/"]
+    depends_on:
+      - user_service
+    environment:
+      - PYTHONPATH=/app
+      - FLASK_ENV=testing
+      - TZ=Europe/Moscow
+      - USER_SERVICE_URL=http://user_service:5000
+
+  unit_tests:
+    build: ./user_service
+    volumes:
+      - ./user_service:/app
+      - ./user_service/unit_tests:/app/unit_tests
+    command: [ "pytest", "unit_tests/" ]
+    depends_on:
+        - db
+    environment:
+      - PYTHONPATH=/app
+      - FLASK_ENV=testing
+      - TZ=Europe/Moscow
+      - DATABASE_URL=postgresql://user:password@db:5432/user_db
+
+volumes:
+  postgres_data:
