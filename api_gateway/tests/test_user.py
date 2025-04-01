@@ -1,7 +1,7 @@
 import pytest
 import jwt
 from datetime import datetime, timedelta
-from ..api_gateway import app
+from ..app import app
 
 
 def pytest_configure():

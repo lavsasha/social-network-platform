@@ -13,7 +13,8 @@ from validators.validators import (
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@db/user_db'
-app.config['JWT_SECRET'] = 'your-secret-key'
+app.config['JWT_SECRET'] = '12345678'
+app.config["JSON_SORT_KEYS"] = False
 db.init_app(app)
 
 with app.app_context():
@@ -62,21 +63,6 @@ def register():
             return jsonify({"message": message}), 400
     if 'last_name' in data:
         is_valid, message = validate_name(data['last_name'])
-        if not is_valid:
-            return jsonify({"message": message}), 400
-
-    if 'date_of_birth' in data:
-        is_valid, message = validate_date_of_birth(data['date_of_birth'])
-        if not is_valid:
-            return jsonify({"message": message}), 400
-
-    if 'phone_number' in data:
-        is_valid, message = validate_phone_number(data['phone_number'])
-        if not is_valid:
-            return jsonify({"message": message}), 400
-
-    if 'city' in data:
-        is_valid, message = validate_city(data['city'])
         if not is_valid:
             return jsonify({"message": message}), 400
 
@@ -185,6 +171,7 @@ def update_profile():
         profile_data = data['profile']
         if not user.profile:
             user.profile = UserProfile(profile_id=str(uuid.uuid4()), user_id=user.user_id)
+            db.session.add(user.profile)
 
         if 'avatar_url' in profile_data:
             user.profile.avatar_url = profile_data['avatar_url']
@@ -212,6 +199,32 @@ def update_profile():
 
     db.session.commit()
     return jsonify({"message": "Profile updated successfully."}), 200
+
+
+@app.route('/user-info', methods=['GET'])
+def get_user_info():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({"message": "Token is missing."}), 401
+    payload = decode_jwt(token)
+    if not payload:
+        return jsonify({"message": "Invalid or expired token."}), 401
+    user = db.session.get(User, payload['user_id'])
+    if not user:
+        return jsonify({"message": "User not found."}), 404
+    return jsonify({
+        "user_id": user.user_id,
+        "login": user.login,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "role": user.role.role_name
+    }), 200
+
+
+@app.route('/health', methods=['GET'])
+def health():
+    return {"status": "healthy"}, 200
 
 
 if __name__ == '__main__':
