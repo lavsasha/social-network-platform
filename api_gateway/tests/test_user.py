@@ -17,7 +17,7 @@ def client():
 
 @pytest.mark.dependency()
 def test_register_api(client):
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "john_2005",
         "password": "J0hnD03!2025",
         "email": "john.doe@example.com",
@@ -28,7 +28,7 @@ def test_register_api(client):
     assert response.json == {"message": "User registered successfully."}
     assert response.status_code == 201
 
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "john_2005",
         "password": "J0hnSm5!2025",
         "email": "john.smith@example.com",
@@ -38,7 +38,7 @@ def test_register_api(client):
     assert response.status_code == 400
     assert response.json == {"message": "Login is already taken."}
 
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "john_doe",
         "password": "J0hnD06!2025",
         "email": "john.doe@example.com",
@@ -51,7 +51,7 @@ def test_register_api(client):
 
 @pytest.mark.dependency(depends=["test_register_api"])
 def test_login_api(client):
-    login_response = client.post('/login', json={
+    login_response = client.post('/api/v1/login', json={
         "login": "john_2005",
         "password": "J0hnD03!2025"
     })
@@ -61,9 +61,9 @@ def test_login_api(client):
         "message": "User successfully authenticated!"
     }
     token = login_response.json["token"]
-    assert client.get('/profile', headers={"Authorization": token}).json['first_name'] == "John"
+    assert client.get('/api/v1/profile', headers={"Authorization": token}).json['first_name'] == "John"
 
-    login_response = client.post('/login', json={
+    login_response = client.post('/api/v1/login', json={
         "login": "john_doue",
         "password": "J0hnD03!2025"
     })
@@ -73,13 +73,13 @@ def test_login_api(client):
 
 @pytest.mark.dependency(depends=["test_login_api"])
 def test_profile_api(client):
-    login_response = client.post('/login', json={
+    login_response = client.post('/api/v1/login', json={
         "login": "john_2005",
         "password": "J0hnD03!2025"
     })
     token = login_response.json["token"]
 
-    update_response = client.put('/profile', headers={"Authorization": token}, json={
+    update_response = client.put('/api/v1/profile', headers={"Authorization": token}, json={
         "first_name": "George",
         "profile": {
             "avatar_url": "http://example.com/avatar.jpg",
@@ -88,33 +88,33 @@ def test_profile_api(client):
     })
     assert update_response.status_code == 200
     assert update_response.json == {"message": "Profile updated successfully."}
-    assert client.get('/profile', headers={"Authorization": token}).json['first_name'] == "George"
+    assert client.get('/api/v1/profile', headers={"Authorization": token}).json['first_name'] == "George"
 
-    update_response = client.put('/profile', headers={"Authorization": token}, json={
+    update_response = client.put('/api/v1/profile', headers={"Authorization": token}, json={
         "login": "george_doe",
         "password": "Je0rgD03!2025"
     })
     assert update_response.status_code == 400
     assert update_response.json == {"message": "Updating login or password is not allowed."}
-    assert client.get('/profile', headers={"Authorization": token}).json['login'] == "john_2005"
+    assert client.get('/api/v1/profile', headers={"Authorization": token}).json['login'] == "john_2005"
 
 
 def test_token_is_missing(client):
-    response = client.get('/profile')
+    response = client.get('/api/v1/profile')
     assert response.status_code == 401
     assert response.json == {"message": "Token is missing."}
 
 
 def test_invalid_or_expired_token(client):
     invalid_token = "invalid_token"
-    response = client.get('/profile', headers={"Authorization": invalid_token})
+    response = client.get('/api/v1/profile', headers={"Authorization": invalid_token})
     assert response.status_code == 401
     assert response.json == {"message": "Invalid or expired token."}
     expired_token = jwt.encode({
         "user_id": "john_2005",
         "exp": datetime.utcnow() - timedelta(hours=1)
     }, app.config['JWT_SECRET'], algorithm='HS256')
-    response = client.get('/profile', headers={"Authorization": expired_token})
+    response = client.get('/api/v1/profile', headers={"Authorization": expired_token})
     assert response.status_code == 401
     assert response.json == {"message": "Invalid or expired token."}
 
@@ -124,14 +124,14 @@ def test_user_not_found(client):
         "user_id": "alice",
         "exp": datetime.utcnow() + timedelta(hours=1)
     }, app.config['JWT_SECRET'], algorithm='HS256')
-    response = client.get('/profile', headers={"Authorization": non_existent_user_token})
+    response = client.get('/api/v1/profile', headers={"Authorization": non_existent_user_token})
     assert response.status_code == 404
     assert response.json == {"message": "User not found."}
 
 
 @pytest.mark.dependency()
 def test_register_with_weak_password(client):
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "alice_wonderland",
         "password": "weak",
         "email": "alice.wonderland@example.com",
@@ -145,7 +145,7 @@ def test_register_with_weak_password(client):
 
 @pytest.mark.dependency()
 def test_register_with_invalid_email(client):
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "bob_marley",
         "password": "Str0ngP@ssword",
         "email": "invalid-email",
@@ -159,7 +159,7 @@ def test_register_with_invalid_email(client):
 
 @pytest.mark.dependency()
 def test_register_with_invalid_name(client):
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "diana_princess",
         "password": "Str0ngP@ssword",
         "email": "diana.princess@example.com",
@@ -173,7 +173,7 @@ def test_register_with_invalid_name(client):
 
 @pytest.mark.dependency(depends=["test_login_api"])
 def test_update_profile_with_invalid_date_of_birth(client):
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "charliee_chaplin",
         "password": "Str0ngP@ssword",
         "email": "charliee.chaplin@example.com",
@@ -182,14 +182,14 @@ def test_update_profile_with_invalid_date_of_birth(client):
     })
     assert response.status_code == 201
 
-    login_response = client.post('/login', json={
+    login_response = client.post('/api/v1/login', json={
         "login": "charliee_chaplin",
         "password": "Str0ngP@ssword"
     })
     assert login_response.status_code == 200
     token = login_response.json["token"]
 
-    update_response = client.put('/profile', headers={"Authorization": token}, json={
+    update_response = client.put('/api/v1/profile', headers={"Authorization": token}, json={
         "profile": {
             "date_of_birth": "2125-04-16"
         }
@@ -200,7 +200,7 @@ def test_update_profile_with_invalid_date_of_birth(client):
 
 @pytest.mark.dependency(depends=["test_login_api"])
 def test_update_profile_with_invalid_phone_number(client):
-    response = client.post('/register', json={
+    response = client.post('/api/v1/register', json={
         "login": "edward_sciissorhands",
         "password": "Str0ngP@ssword",
         "email": "edward.sciissorhands@example.com",
@@ -209,13 +209,13 @@ def test_update_profile_with_invalid_phone_number(client):
     })
     assert response.status_code == 201
 
-    login_response = client.post('/login', json={
+    login_response = client.post('/api/v1/login', json={
         "login": "edward_sciissorhands",
         "password": "Str0ngP@ssword"
     })
     assert login_response.status_code == 200
     token = login_response.json["token"]
-    update_response = client.put('/profile', headers={"Authorization": token}, json={
+    update_response = client.put('/api/v1/profile', headers={"Authorization": token}, json={
         "profile": {
             "phone_number": "123"
         }

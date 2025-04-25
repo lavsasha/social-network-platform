@@ -45,6 +45,7 @@ class KafkaProducer:
 
     def send_user_registration_event(self, user_id: str, email: str, registration_date: datetime):
         """Send event when a user registers."""
+        print(f"!!! Sending registration event for {email}")
         self.send_event(
             topic=self.USER_REGISTRATIONS_TOPIC,
             data={

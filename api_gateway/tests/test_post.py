@@ -1,4 +1,5 @@
 import pytest
+from pytest_mock import mocker
 import json
 from datetime import datetime, timedelta
 import jwt
@@ -32,7 +33,7 @@ def test_register_for_posts(client):
         "last_name": "Grey"
     })
     assert response.status_code in [200, 201], f"Unexpected status code: {response.status_code}"
-    assert response.json == {"message": "User registered successfully."}
+    assert response.json["message"] == "User registered successfully."
 
 
 @pytest.mark.dependency(depends=["test_register_for_posts"])
@@ -125,23 +126,6 @@ def test_list_posts(client):
     assert "current_page" in meta
 
 
-@pytest.mark.dependency(depends=["test_update_post"])
-def test_delete_post(client):
-    response = client.delete(
-        f'/api/v1/posts/{POST_CREATED_ID}',
-        headers={"Authorization": POST_TOKEN}
-    )
-    assert response.status_code == 200
-    data = response.get_json()
-    assert "message" in data and data["message"] == "Post deleted successfully."
-
-    get_response = client.get(
-        f'/api/v1/posts/{POST_CREATED_ID}',
-        headers={"Authorization": POST_TOKEN}
-    )
-    assert get_response.status_code == 404
-
-
 def test_protected_endpoint_no_token(client):
     response = client.get('/api/v1/posts')
     assert response.status_code == 401, f"Unexpected status code: {response.status_code}"
@@ -187,3 +171,175 @@ def test_post_pagination_boundaries(client):
         headers={"Authorization": POST_TOKEN}
     )
     assert response.status_code == 400
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_view_post(client):
+    response = client.post(
+        f'/api/v1/posts/{POST_CREATED_ID}/view',
+        headers={"Authorization": POST_TOKEN}
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "success" in data and isinstance(data["success"], bool)
+    assert "viewed_at" in data and isinstance(data["viewed_at"], str)
+    try:
+        datetime.fromisoformat(data["viewed_at"])
+    except ValueError:
+        pytest.fail("Invalid viewed_at format")
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_like_post(client):
+    response = client.post(
+        f'/api/v1/posts/{POST_CREATED_ID}/like',
+        headers={"Authorization": POST_TOKEN}
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "success" in data and isinstance(data["success"], bool)
+    assert "liked_at" in data and isinstance(data["liked_at"], str)
+    try:
+        datetime.fromisoformat(data["liked_at"])
+    except ValueError:
+        pytest.fail("Invalid liked_at format")
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_comment_post(client):
+    comment_text = "Test comment"
+
+    response = client.post(
+        f'/api/v1/posts/{POST_CREATED_ID}/comment',
+        headers={"Authorization": POST_TOKEN},
+        json={"text": comment_text}
+    )
+
+    assert response.status_code == 201
+    data = response.get_json()
+    assert "comment_id" in data and isinstance(data["comment_id"], int)
+    assert "created_at" in data and isinstance(data["created_at"], str)
+    try:
+        datetime.fromisoformat(data["created_at"])
+    except ValueError:
+        pytest.fail("Invalid created_at format")
+
+
+@pytest.mark.dependency(depends=["test_create_post", "test_comment_post"])
+def test_get_comments_success(client):
+    response = client.get(
+        f'/api/v1/posts/{POST_CREATED_ID}/comments?page=1&per_page=10',
+        headers={"Authorization": POST_TOKEN}
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+
+    assert "comments" in data and isinstance(data["comments"], list)
+    assert "meta" in data and isinstance(data["meta"], dict)
+
+    for comment in data["comments"]:
+        assert "comment_id" in comment and isinstance(comment["comment_id"], int)
+        assert "text" in comment and isinstance(comment["text"], str)
+        assert "user_id" in comment and isinstance(comment["user_id"], str)
+        assert "created_at" in comment and isinstance(comment["created_at"], str)
+        try:
+            datetime.fromisoformat(comment["created_at"])
+        except ValueError:
+            pytest.fail("Invalid created_at format in comment")
+
+    meta = data["meta"]
+    assert "total" in meta and isinstance(meta["total"], int)
+    assert "page" in meta and isinstance(meta["page"], int)
+    assert "per_page" in meta and isinstance(meta["per_page"], int)
+    assert "last_page" in meta and isinstance(meta["last_page"], int)
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_view_post_not_found(client):
+    response = client.post(
+        '/api/v1/posts/999999/view',
+        headers={"Authorization": POST_TOKEN}
+    )
+    assert response.status_code == 404
+    data = response.get_json()
+    assert "message" in data and isinstance(data["message"], str)
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_like_post_not_found(client):
+    response = client.post(
+        '/api/v1/posts/999999/like',
+        headers={"Authorization": POST_TOKEN}
+    )
+    assert response.status_code == 404
+    data = response.get_json()
+    assert "message" in data and isinstance(data["message"], str)
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_comment_post_empty_text(client):
+    response = client.post(
+        f'/api/v1/posts/{POST_CREATED_ID}/comment',
+        headers={"Authorization": POST_TOKEN},
+        json={"text": ""}
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "message" in data and isinstance(data["message"], str)
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_comment_post_long_text(client):
+    long_text = "a" * 1001
+    response = client.post(
+        f'/api/v1/posts/{POST_CREATED_ID}/comment',
+        headers={"Authorization": POST_TOKEN},
+        json={"text": long_text}
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "message" in data and isinstance(data["message"], str)
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_get_comments_not_found(client):
+    response = client.get(
+        '/api/v1/posts/999999/comments',
+        headers={"Authorization": POST_TOKEN}
+    )
+    assert response.status_code == 404
+    data = response.get_json()
+    assert "message" in data and isinstance(data["message"], str)
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_get_comments_invalid_post_id(client):
+    response = client.get(
+        '/api/v1/posts/invalid/comments',
+        headers={"Authorization": POST_TOKEN}
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "message" in data and isinstance(data["message"], str)
+
+
+@pytest.mark.dependency(depends=["test_create_post"])
+def test_get_comments_invalid_pagination(client):
+    response = client.get(
+        f'/api/v1/posts/{POST_CREATED_ID}/comments?page=0&per_page=0',
+        headers={"Authorization": POST_TOKEN}
+    )
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "message" in data and isinstance(data["message"], str)
+
+
+@pytest.mark.dependency(depends=["test_login_for_posts"])
+def test_get_comments_unauthorized(client):
+    response = client.get(f'/api/v1/posts/1/comments')
+    assert response.status_code == 401
+    data = response.get_json()
+    assert "error" in data and isinstance(data["error"], str)

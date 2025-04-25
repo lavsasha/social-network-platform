@@ -24,7 +24,8 @@ class PostServiceServicer(post_pb2_grpc.PostServiceServicer):
 
     def DeletePost(self, request, context):
         try:
-            return self.db.delete_post(request.post_id, request.user_id)
+            response = self.db.delete_post(request.post_id, request.user_id)
+            return response
         except NotFoundError as e:
             return self._handle_errors(context, e, grpc.StatusCode.NOT_FOUND, post_pb2.DeletePostResponse)
         except SQLAlchemyError as e:
@@ -96,6 +97,9 @@ class PostServiceServicer(post_pb2_grpc.PostServiceServicer):
 
     def CommentPost(self, request, context):
         try:
+            if not request.comment.strip():
+                raise InvalidArgumentError("Comment text cannot be empty")
+
             result = self.db.create_comment(request)
             kafka_producer.send_post_commented_event(
                 user_id=request.user_id,
@@ -108,6 +112,8 @@ class PostServiceServicer(post_pb2_grpc.PostServiceServicer):
             return self._handle_errors(context, e, grpc.StatusCode.NOT_FOUND, post_pb2.CommentPostResponse)
         except AccessDeniedError as e:
             return self._handle_errors(context, e, grpc.StatusCode.PERMISSION_DENIED, post_pb2.CommentPostResponse)
+        except InvalidArgumentError as e:
+            return self._handle_errors(context, e, grpc.StatusCode.INVALID_ARGUMENT, post_pb2.CommentPostResponse)
         except PostDBError as e:
             return self._handle_errors(context, e, grpc.StatusCode.INTERNAL, post_pb2.CommentPostResponse)
 

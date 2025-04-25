@@ -98,7 +98,7 @@ def register():
     kafka_producer.send_user_registration_event(
         user_id=user_id,
         email=new_user.email,
-        registration_date=datetime.datetime.utcnow().isoformat()
+        registration_date=datetime.datetime.utcnow()
     )
 
     return jsonify({"message": "User registered successfully.", "user_id": user_id, "email": new_user.email}), 201

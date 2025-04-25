@@ -3,13 +3,11 @@ from unittest.mock import MagicMock, patch
 import grpc
 from datetime import datetime
 from proto import post_pb2, post_pb2_grpc
+from db.post_db import PostDB, PostDBError, NotFoundError, InvalidArgumentError, OutOfRangeError, AccessDeniedError
 
 mock_kafka_producer = MagicMock()
 with patch.dict('sys.modules', {'broker.kafka_producer': mock_kafka_producer}):
     from api.post_grpc_service import PostServiceServicer
-
-from sqlalchemy.exc import SQLAlchemyError
-from db.post_db import PostDB, PostDBError, NotFoundError, InvalidArgumentError, OutOfRangeError
 
 
 class DummyContext:
@@ -210,3 +208,114 @@ def test_list_private_posts_for_owner(servicer, dummy_context):
     response = service.ListPosts(request, dummy_context)
     assert len(response.posts) == 1
     assert response.posts[0].is_private
+
+
+def test_get_comments_success(servicer, dummy_context):
+    service, mock_db = servicer
+
+    mock_response = post_pb2.GetCommentsResponse(
+        comments=[
+            post_pb2.Comment(
+                comment_id="1",
+                text="Test comment",
+                user_id="user123",
+                created_at="2023-01-01T00:00:00"
+            )
+        ],
+        meta=post_pb2.Meta(
+            total=1,
+            page=1,
+            per_page=10,
+            last_page=1
+        )
+    )
+    mock_db.get_comments.return_value = mock_response
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=1,
+        per_page=10
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert len(response.comments) == 1
+    assert response.comments[0].text == "Test comment"
+    assert response.meta.total == 1
+    assert dummy_context.code is None
+
+
+def test_get_comments_not_found(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = NotFoundError("Post not found")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123"
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert isinstance(response, post_pb2.GetCommentsResponse)
+    assert dummy_context.code == grpc.StatusCode.NOT_FOUND
+    assert "Post not found" in dummy_context.details
+
+
+def test_get_comments_pagination_error(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = OutOfRangeError("Invalid page")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=999,
+        per_page=10
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert isinstance(response, post_pb2.GetCommentsResponse)
+    assert dummy_context.code == grpc.StatusCode.OUT_OF_RANGE
+    assert "Invalid page" in dummy_context.details
+
+
+def test_get_comments_access_denied(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = AccessDeniedError("Access denied")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123"
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert isinstance(response, post_pb2.GetCommentsResponse)
+    assert dummy_context.code == grpc.StatusCode.PERMISSION_DENIED
+    assert "Access denied" in dummy_context.details
+
+
+def test_get_comments_pagination_params(servicer, dummy_context):
+    service, mock_db = servicer
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=2,
+        per_page=5
+    )
+
+    service.GetComments(request, dummy_context)
+    mock_db.get_comments.assert_called_with("123", "user123", 2, 5)
+
+
+def test_get_comments_invalid_arguments(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = InvalidArgumentError("Invalid arguments")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=0,
+        per_page=0
+    )
+
+    response = service.GetComments(request, dummy_context)
+    assert dummy_context.code == grpc.StatusCode.INVALID_ARGUMENT
