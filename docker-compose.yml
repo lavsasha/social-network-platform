@@ -18,7 +18,9 @@ services:
       - PYTHONPATH=/app:/app/proto
 
   user_service:
-    build: ./user_service
+    build:
+      context: .
+      dockerfile: user_service/Dockerfile
     ports:
       - "5000:5000"
     networks:
@@ -29,6 +31,7 @@ services:
     environment:
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://user:password@db:5432/user_db
+      - PYTHONPATH=/app:/app/broker
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
       interval: 5s
@@ -47,7 +50,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      - PYTHONPATH=/app:/app/proto
+      - PYTHONPATH=/app:/app/proto:/app/broker
       - DATABASE_URL=postgresql://user:password@db:5432/post_db
 
   db:
@@ -76,6 +79,7 @@ services:
       - ./proto:/app/proto
       - ./user_service:/app/user_service
       - ./post_service:/app/post_service
+      - ./broker:/app/broker
     command: >
       sh -c "
         wait-for-it.sh user_service:5000 -t 30 &&
@@ -95,12 +99,44 @@ services:
     networks:
       - social-network
     environment:
-      - PYTHONPATH=/app:/app/proto:/app/post_service:/app/api_gateway
+      - PYTHONPATH=/app:/app/proto:/app/post_service:/app/api_gateway:/app/broker
       - FLASK_ENV=testing
       - TZ=Europe/Moscow
       - POST_SERVICE_HOST=post_service
       - POST_SERVICE_PORT=50051
       - USER_SERVICE_URL=http://user_service:5000
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - social-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - social-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8081:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: true
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - social-network
 
 
 networks:

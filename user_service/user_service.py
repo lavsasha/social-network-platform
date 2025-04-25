@@ -10,6 +10,7 @@ from validators.validators import (
     validate_email_format, validate_date_of_birth, validate_name,
     validate_phone_number, validate_login, validate_password, validate_city
 )
+from broker.kafka_producer import kafka_producer
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:password@db/user_db'
@@ -94,7 +95,13 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({"message": "User registered successfully."}), 201
+    kafka_producer.send_user_registration_event(
+        user_id=user_id,
+        email=new_user.email,
+        registration_date=datetime.datetime.utcnow().isoformat()
+    )
+
+    return jsonify({"message": "User registered successfully.", "user_id": user_id, "email": new_user.email}), 201
 
 
 @app.route('/login', methods=['POST'])

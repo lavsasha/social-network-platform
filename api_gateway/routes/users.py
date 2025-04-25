@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 import requests
+import json
 
 users_bp = Blueprint('users', __name__)
 
@@ -9,14 +10,21 @@ def register():
     try:
         response = requests.post(
             f"{current_app.config['USER_SERVICE_URL']}/register",
-            json=request.json
+            json=request.json,
+            timeout=5
         )
         response.raise_for_status()
-        return jsonify(response.json()), response.status_code
+        user_data = response.json()
+        message = user_data.get('message')
+        return jsonify({"message": message}), response.status_code
+
     except requests.exceptions.HTTPError as e:
-        return jsonify({'error': str(e.response.json())}), e.response.status_code
+        error_msg = e.response.json().get('error', str(e))
+        return jsonify({'error': error_msg}), e.response.status_code
     except requests.exceptions.RequestException:
         return jsonify({'error': 'User service unavailable'}), 503
+    except Exception:
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @users_bp.route('/login', methods=['POST'])
@@ -66,6 +74,7 @@ def update_profile():
         return jsonify({'error': str(e.response.json())}), e.response.status_code
     except requests.exceptions.RequestException:
         return jsonify({'error': 'User service unavailable'}), 503
+
 
 @users_bp.route('/user-info', methods=['GET'])
 def get_user_info():

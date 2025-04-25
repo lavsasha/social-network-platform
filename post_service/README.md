@@ -232,3 +232,112 @@ curl -X GET http://localhost:8080/api/v1/posts/1
 curl -X GET http://localhost:8080/api/v1/posts/1 \
 -H "Authorization: invalid_token"
 ```
+
+## Тестирование взаимодействия с постами
+
+### Просмотр поста (успешный)
+```
+curl -X POST http://localhost:8080/api/v1/posts/1/view \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token"
+```
+
+### Просмотр чужого приватного поста (должен вернуть 403)
+```
+curl -X POST http://localhost:8080/api/v1/posts/2/view \
+  -H "Authorization: poll_token"
+```
+
+### Лайк поста (успешный)
+```
+curl -X POST http://localhost:8080/api/v1/posts/1/like \
+  -H "Authorization: poll_token"
+```
+
+### Лайк чужого приватного поста (должен вернуть 403)
+```
+curl -X POST http://localhost:8080/api/v1/posts/2/like \
+  -H "Authorization: poll_token"
+```
+
+### Добавление комментария (успешное)
+```
+curl -X POST http://localhost:8080/api/v1/posts/1/comment \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token" \
+  -d '{
+    "text": "Great post about the universe!"
+  }'
+```
+
+### Добавление комментария к чужому приватному посту (должен вернуть 403)
+```
+curl -X POST http://localhost:8080/api/v1/posts/2/comment \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token" \
+  -d '{
+    "text": "Trying to comment private post"
+  }'
+```
+
+### Получение комментариев (успешное)
+```
+curl -X GET 'http://localhost:8080/api/v1/posts/1/comments?page=1&per_page=5' \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token"
+```
+
+### Получение комментариев к чужому приватному посту (должен вернуть 403)
+```
+curl -X GET 'http://localhost:8080/api/v1/posts/2/comments?page=1&per_page=5' \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token"
+```
+
+### Пагинация комментариев
+```
+curl -X GET 'http://localhost:8080/api/v1/posts/1/comments?page=2&per_page=1' \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token"
+```
+
+### Попытка просмотра несуществующего поста (должен вернуть 404)
+```
+curl -X POST http://localhost:8080/api/v1/posts/10/view \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token"
+```
+
+### Попытка лайка несуществующего поста (должен вернуть 404)
+```
+curl -X POST http://localhost:8080/api/v1/posts/10/like \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token"
+```
+
+### Попытка комментирования несуществующего поста (должен вернуть 404)
+```
+curl -X POST http://localhost:8080/api/v1/posts/10/comment \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token" \
+  -d '{
+    "text": "Comment to non-existent post"
+  }'
+```
+
+### Попытка получения комментариев несуществующего поста (должен вернуть 404)
+```
+curl -X GET 'http://localhost:8080/api/v1/posts/10/comments' \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token"
+```
+
+### Попытка добавления пустого комментария (должен вернуть 400)
+```
+curl -X POST http://localhost:8080/api/v1/posts/1/comment \
+  -H "Content-Type: application/json" \
+  -H "Authorization: poll_token" \
+  -d '{
+    "text": ""
+  }'
+```
