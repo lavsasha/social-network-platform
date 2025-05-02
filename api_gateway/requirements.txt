@@ -12,5 +12,7 @@ grpcio-tools==1.42.0
 email_validator
 pytest
 pytest-cov
+pytest-mock>=3.0.0
 pytest-dependency
 coverage
+confluent-kafka==2.2.0

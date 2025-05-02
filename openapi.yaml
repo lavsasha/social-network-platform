@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Social Network Platform API
-  version: 1.0.0
+  version: 1.1.0
   description: Unified API for user management and post operations
 servers:
   - url: http://localhost:8080/api/v1
@@ -91,11 +91,50 @@ components:
               type: integer
             to_:
               type: integer
+    Comment:
+      type: object
+      properties:
+        comment_id:
+          type: string
+        text:
+          type: string
+        user_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        post_id:
+          type: string
+
+    CommentList:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        meta:
+          type: object
+          properties:
+            total:
+              type: integer
+            per_page:
+              type: integer
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+
     ErrorResponse:
       type: object
       properties:
         message:
           type: string
+        code:
+          type: integer
+        details:
+          type: string
+
 paths:
   /register:
     post:
@@ -390,6 +429,169 @@ paths:
                     type: string
         '403':
           description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /posts/{post_id}/comment:
+    post:
+      summary: Add comment to post
+      tags: [ Comments ]
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+              required:
+                - comment
+      responses:
+        '201':
+          description: Comment added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment_id:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: |
+            Bad request. Possible reasons:
+            - Comment text is empty
+            - Comment text is too long
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get post comments
+      tags: [ Comments ]
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentList'
+        '400':
+          description: Invalid pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /posts/{post_id}/view:
+    post:
+      summary: View a post
+      tags: [ Posts ]
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: View counted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  viewed_at:
+                    type: string
+                    format: date-time
+
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /posts/{post_id}/like:
+    post:
+      summary: Like a post
+      tags: [ Posts ]
+      security:
+        - ApiKeyAuth: [ ]
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Post liked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  liked_at:
+                    type: string
+                    format: date-time
+        '404':
+          description: Post not found
           content:
             application/json:
               schema:

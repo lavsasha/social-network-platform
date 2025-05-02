@@ -18,7 +18,9 @@ services:
       - PYTHONPATH=/app:/app/proto
 
   user_service:
-    build: ./user_service
+    build:
+      context: .
+      dockerfile: user_service/Dockerfile
     ports:
       - "5000:5000"
     networks:
@@ -29,11 +31,7 @@ services:
     environment:
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://user:password@db:5432/user_db
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5000/health" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - PYTHONPATH=/app:/app/broker
 
   post_service:
     build:
@@ -47,7 +45,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      - PYTHONPATH=/app:/app/proto
+      - PYTHONPATH=/app:/app/proto:/app/broker
       - DATABASE_URL=postgresql://user:password@db:5432/post_db
 
   db:
@@ -76,31 +74,86 @@ services:
       - ./proto:/app/proto
       - ./user_service:/app/user_service
       - ./post_service:/app/post_service
+      - ./broker:/app/broker
     command: >
       sh -c "
-        wait-for-it.sh user_service:5000 -t 30 &&
-        wait-for-it.sh post_service:50051 -t 30 &&
-        echo 'Запуск тестов tests_post...' &&
-        pytest tests/test_post.py &&
-        echo 'Тесты tests_post завершены. Запуск test_post_service...' &&
-        chmod +x /usr/local/bin/wait-for-it.sh &&
-        python -c 'from post_service.db.post_db import PostDB; db = PostDB(\"postgresql://user:password@db:5432/post_db\"); db.recreate_tables()' &&
-        pytest post_service/tests/test_unit_models.py post_service/tests/test_unit_post_service.py
+        echo 'Ожидание готовности сервисов...' &&
+        while ! nc -z user_service 5000; do sleep 2; done &&
+        while ! nc -z post_service 50051; do sleep 2; done &&
+        while ! curl -f http://user_service:5000/health; do sleep 2; done &&
+        while ! nc -z kafka 9092; do sleep 2; done &&
+
+        export PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto &&
+
+        echo 'Запуск тестов api_gateway...' &&
+        cd /app &&
+        pytest api_gateway/tests/test_user.py api_gateway/tests/test_post.py api_gateway/tests/test_kafka.py -v || exit 1 &&
+
+        echo 'Запуск тестов user_service...' &&
+        cd /app/user_service &&
+        pytest tests/test_unit_models.py tests/test_unit_user_service.py tests/test_unit_validators.py -v || exit 1 &&
+
+        echo 'Запуск тестов post_service...' &&
+        cd /app/post_service &&
+        pytest tests/test_unit_models.py tests/test_unit_post_service.py tests/test_unit_kafka_events.py -v || exit 1
       "
     depends_on:
       - api_gateway
       - user_service
       - post_service
       - db
+      - kafka
     networks:
       - social-network
     environment:
-      - PYTHONPATH=/app:/app/proto:/app/post_service:/app/api_gateway
+      - PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto
       - FLASK_ENV=testing
       - TZ=Europe/Moscow
       - POST_SERVICE_HOST=post_service
       - POST_SERVICE_PORT=50051
       - USER_SERVICE_URL=http://user_service:5000
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - social-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - social-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8081:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: true
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - social-network
 
 
 networks:

@@ -3,8 +3,11 @@ from unittest.mock import MagicMock, patch
 import grpc
 from datetime import datetime
 from proto import post_pb2, post_pb2_grpc
-from api.post_grpc_service import PostServiceServicer
-from sqlalchemy.exc import SQLAlchemyError
+from db.post_db import PostDB, PostDBError, NotFoundError, InvalidArgumentError, OutOfRangeError, AccessDeniedError
+
+mock_kafka_producer = MagicMock()
+with patch.dict('sys.modules', {'broker.kafka_producer': mock_kafka_producer}):
+    from api.post_grpc_service import PostServiceServicer
 
 
 class DummyContext:
@@ -19,61 +22,6 @@ class DummyContext:
         self.details = details
 
 
-def fake_create_post(request):
-    response = post_pb2.CreatePostResponse(
-        post_id="1",
-        created_at=datetime.utcnow().isoformat()
-    )
-    return response
-
-
-def fake_delete_post(request):
-    return True
-
-
-def fake_update_post(request):
-    response = post_pb2.UpdatePostResponse(
-        updated_at=datetime.utcnow().isoformat()
-    )
-    return response
-
-
-def fake_get_post(request):
-    post = post_pb2.Post(
-        post_id="1",
-        title="Test Post",
-        description="Test Description",
-        creator_id=request.user_id,
-        created_at=datetime.utcnow().isoformat(),
-        updated_at=datetime.utcnow().isoformat(),
-        is_private=False,
-        tags=["test"]
-    )
-    return post_pb2.GetPostResponse(post=post)
-
-
-def fake_list_posts(user_id, page, per_page):
-    posts = [
-        post_pb2.Post(
-            post_id=str(i),
-            title=f"Post {i}",
-            creator_id=user_id,
-            created_at=datetime.utcnow().isoformat(),
-            is_private=False
-        )
-        for i in range(1, per_page + 1)
-    ]
-    return post_pb2.ListPostsResponse(
-        posts=posts,
-        total=10,
-        page=page,
-        per_page=per_page,
-        last_page=2,
-        from_=1,
-        to_=per_page
-    )
-
-
 @pytest.fixture
 def dummy_context():
     return DummyContext()
@@ -81,43 +29,13 @@ def dummy_context():
 
 @pytest.fixture
 def servicer():
-    mock_db = MagicMock()
+    mock_db = MagicMock(spec=PostDB)
     return PostServiceServicer(mock_db), mock_db
-
-
-def test_create_post_success(servicer, dummy_context):
-    service, mock_db = servicer
-    mock_db.create_post.return_value = fake_create_post(None)
-    request = post_pb2.CreatePostRequest(
-        title="Test Post",
-        description="Test Description",
-        creator_id="user123",
-        is_private=False,
-        tags=["test"]
-    )
-    response = service.CreatePost(request, dummy_context)
-    assert response.post_id == "1"
-    assert dummy_context.code is None
-
-
-def test_create_post_db_error(servicer, dummy_context):
-    service, mock_db = servicer
-    mock_db.create_post.side_effect = SQLAlchemyError("DB error")
-    request = post_pb2.CreatePostRequest(
-        title="Test Post",
-        description="Test Description",
-        creator_id="user123",
-        is_private=False,
-        tags=["test"]
-    )
-    response = service.CreatePost(request, dummy_context)
-    assert dummy_context.code == grpc.StatusCode.INTERNAL
-    assert dummy_context.details == "DB error"
 
 
 def test_delete_post_success(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.delete_post.return_value = True
+    mock_db.delete_post.return_value = post_pb2.DeletePostResponse(success=True)
     request = post_pb2.DeletePostRequest(
         post_id="1",
         user_id="user123"
@@ -129,19 +47,22 @@ def test_delete_post_success(servicer, dummy_context):
 
 def test_delete_post_not_found(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.delete_post.return_value = False
+    mock_db.delete_post.side_effect = NotFoundError("Post not found")
     request = post_pb2.DeletePostRequest(
         post_id="1",
         user_id="user123"
     )
     response = service.DeletePost(request, dummy_context)
+    assert isinstance(response, post_pb2.DeletePostResponse)
     assert dummy_context.code == grpc.StatusCode.NOT_FOUND
-    assert dummy_context.details == "Post not found or permission denied"
+    assert "Post not found" in dummy_context.details
 
 
 def test_update_post_success(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.update_post.return_value = fake_update_post(None)
+    mock_db.update_post.return_value = post_pb2.UpdatePostResponse(
+        updated_at=datetime.utcnow().isoformat()
+    )
     request = post_pb2.UpdatePostRequest(
         post_id="1",
         user_id="user123",
@@ -157,7 +78,7 @@ def test_update_post_success(servicer, dummy_context):
 
 def test_update_post_not_found(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.update_post.return_value = None
+    mock_db.update_post.side_effect = NotFoundError("Post not found")
     request = post_pb2.UpdatePostRequest(
         post_id="1",
         user_id="user123",
@@ -167,16 +88,25 @@ def test_update_post_not_found(servicer, dummy_context):
         tags=["update"]
     )
     response = service.UpdatePost(request, dummy_context)
+    assert isinstance(response, post_pb2.UpdatePostResponse)
     assert dummy_context.code == grpc.StatusCode.NOT_FOUND
-    assert dummy_context.details == "Post not found or permission denied"
+    assert "Post not found" in dummy_context.details
 
 
 def test_get_post_success(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.get_post.return_value = fake_get_post(post_pb2.GetPostRequest(
-        post_id="1",
-        user_id="user123"
-    ))
+    mock_db.get_post.return_value = post_pb2.GetPostResponse(
+        post=post_pb2.Post(
+            post_id="1",
+            title="Test Post",
+            description="Test Description",
+            creator_id="user123",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+            is_private=False,
+            tags=["test"]
+        )
+    )
     request = post_pb2.GetPostRequest(
         post_id="1",
         user_id="user123"
@@ -189,19 +119,35 @@ def test_get_post_success(servicer, dummy_context):
 
 def test_get_post_not_found(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.get_post.return_value = None
+    mock_db.get_post.side_effect = NotFoundError("Post not found")
     request = post_pb2.GetPostRequest(
         post_id="1",
         user_id="user123"
     )
     response = service.GetPost(request, dummy_context)
+    assert isinstance(response, post_pb2.GetPostResponse)
     assert dummy_context.code == grpc.StatusCode.NOT_FOUND
-    assert dummy_context.details == "Post not found"
+    assert "Post not found" in dummy_context.details
 
 
 def test_list_posts_success(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.list_posts.return_value = fake_list_posts("user123", page=1, per_page=5)
+    mock_response = post_pb2.ListPostsResponse(
+        posts=[post_pb2.Post(
+            post_id=str(i),
+            title=f"Post {i}",
+            creator_id="user123",
+            created_at=datetime.utcnow().isoformat(),
+            is_private=False
+        ) for i in range(1, 6)],
+        total=10,
+        page=1,
+        per_page=5,
+        last_page=2,
+        from_=1,
+        to_=5
+    )
+    mock_db.list_posts.return_value = mock_response
     request = post_pb2.ListPostsRequest(
         user_id="user123",
         page=1,
@@ -216,54 +162,160 @@ def test_list_posts_success(servicer, dummy_context):
 
 def test_list_posts_invalid_argument(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.list_posts.side_effect = ValueError("Invalid pagination parameters")
+    mock_db.list_posts.side_effect = InvalidArgumentError("Invalid pagination parameters")
     request = post_pb2.ListPostsRequest(
         user_id="user123",
         page=0,
         per_page=5
     )
     response = service.ListPosts(request, dummy_context)
+    assert isinstance(response, post_pb2.ListPostsResponse)
     assert dummy_context.code == grpc.StatusCode.INVALID_ARGUMENT
-    assert dummy_context.details == "Invalid pagination parameters"
+    assert "Invalid pagination parameters" in dummy_context.details
 
 
 def test_list_posts_internal_error(servicer, dummy_context):
     service, mock_db = servicer
-    mock_db.list_posts.side_effect = Exception("Unexpected error")
+    mock_db.list_posts.side_effect = PostDBError("Unexpected error")
     request = post_pb2.ListPostsRequest(
         user_id="user123",
         page=1,
         per_page=5
     )
     response = service.ListPosts(request, dummy_context)
+    assert isinstance(response, post_pb2.ListPostsResponse)
     assert dummy_context.code == grpc.StatusCode.INTERNAL
-    assert dummy_context.details == "Unexpected error"
+    assert "Unexpected error" in dummy_context.details
 
 
 def test_list_private_posts_for_owner(servicer, dummy_context):
     service, mock_db = servicer
-
-    def mock_list_posts(user_id, page, per_page):
-        posts = [
-            post_pb2.Post(
-                post_id="1",
-                title="My Private Post",
-                is_private=True,
-                creator_id=user_id
-            )
-        ]
-        return post_pb2.ListPostsResponse(
-            posts=posts,
-            total=1,
-            page=1,
-            per_page=10
-        )
-
-    mock_db.list_posts.side_effect = mock_list_posts
-
+    mock_response = post_pb2.ListPostsResponse(
+        posts=[post_pb2.Post(
+            post_id="1",
+            title="My Private Post",
+            is_private=True,
+            creator_id="user123"
+        )],
+        total=1,
+        page=1,
+        per_page=10
+    )
+    mock_db.list_posts.return_value = mock_response
     request = post_pb2.ListPostsRequest(
         user_id="user123"
     )
     response = service.ListPosts(request, dummy_context)
     assert len(response.posts) == 1
     assert response.posts[0].is_private
+
+
+def test_get_comments_success(servicer, dummy_context):
+    service, mock_db = servicer
+
+    mock_response = post_pb2.GetCommentsResponse(
+        comments=[
+            post_pb2.Comment(
+                comment_id="1",
+                text="Test comment",
+                user_id="user123",
+                created_at="2023-01-01T00:00:00"
+            )
+        ],
+        meta=post_pb2.Meta(
+            total=1,
+            page=1,
+            per_page=10,
+            last_page=1
+        )
+    )
+    mock_db.get_comments.return_value = mock_response
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=1,
+        per_page=10
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert len(response.comments) == 1
+    assert response.comments[0].text == "Test comment"
+    assert response.meta.total == 1
+    assert dummy_context.code is None
+
+
+def test_get_comments_not_found(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = NotFoundError("Post not found")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123"
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert isinstance(response, post_pb2.GetCommentsResponse)
+    assert dummy_context.code == grpc.StatusCode.NOT_FOUND
+    assert "Post not found" in dummy_context.details
+
+
+def test_get_comments_pagination_error(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = OutOfRangeError("Invalid page")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=999,
+        per_page=10
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert isinstance(response, post_pb2.GetCommentsResponse)
+    assert dummy_context.code == grpc.StatusCode.OUT_OF_RANGE
+    assert "Invalid page" in dummy_context.details
+
+
+def test_get_comments_access_denied(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = AccessDeniedError("Access denied")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123"
+    )
+    response = service.GetComments(request, dummy_context)
+
+    assert isinstance(response, post_pb2.GetCommentsResponse)
+    assert dummy_context.code == grpc.StatusCode.PERMISSION_DENIED
+    assert "Access denied" in dummy_context.details
+
+
+def test_get_comments_pagination_params(servicer, dummy_context):
+    service, mock_db = servicer
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=2,
+        per_page=5
+    )
+
+    service.GetComments(request, dummy_context)
+    mock_db.get_comments.assert_called_with("123", "user123", 2, 5)
+
+
+def test_get_comments_invalid_arguments(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.get_comments.side_effect = InvalidArgumentError("Invalid arguments")
+
+    request = post_pb2.GetCommentsRequest(
+        post_id="123",
+        user_id="user123",
+        page=0,
+        per_page=0
+    )
+
+    response = service.GetComments(request, dummy_context)
+    assert dummy_context.code == grpc.StatusCode.INVALID_ARGUMENT

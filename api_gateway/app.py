@@ -10,6 +10,7 @@ app.config.update({
     'POST_SERVICE_HOST': os.getenv('POST_SERVICE_HOST', 'post_service'),
     'POST_SERVICE_PORT': os.getenv('POST_SERVICE_PORT', 50051)
 })
+
 app.config['JWT_SECRET'] = '12345678'
 app.config['JSON_SORT_KEYS'] = False
 

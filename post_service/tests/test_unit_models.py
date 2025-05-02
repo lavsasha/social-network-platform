@@ -2,7 +2,9 @@ import pytest
 from datetime import datetime
 from sqlalchemy import Integer, String, Text, Boolean, DateTime, ARRAY
 from db.models import Post
-
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @pytest.fixture
 def sample_post():

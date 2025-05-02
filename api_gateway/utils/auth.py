@@ -13,27 +13,23 @@ def token_required(f):
         try:
             response = requests.get(
                 f"{current_app.config['USER_SERVICE_URL']}/user-info",
-                headers={'Authorization': token}
+                headers={'Authorization': token},
+                timeout=5
             )
-            response.raise_for_status()
+
+            if response.status_code != 200:
+                return jsonify({'error': 'Invalid token'}), 401
+
             data = response.json()
 
-            if 'user_id' not in data:
-                return jsonify({'error': 'User info does not contain user_id'}), 401
+            if not data.get('user_id'):
+                return jsonify({'error': 'Invalid user info'}), 401
 
-            user_id = data['user_id']
-            return f(user_id, *args, **kwargs)
+            return f(data['user_id'], *args, **kwargs)
 
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 401:
-                return jsonify({'error': 'Invalid or expired token'}), 401
-            return jsonify({'error': f'User service error: {str(e)}'}), 500
-        except requests.exceptions.RequestException as e:
-            return jsonify({'error': 'User service unavailable'}), 503
-        except KeyError as e:
-            return jsonify({'error': f'Invalid user info response: missing {str(e)}'}), 401
-        except Exception as e:
-            current_app.logger.error(f'Unexpected error in token_required: {repr(e)}', exc_info=True)
-            return jsonify({'error': 'Invalid token'}), 401
+        except requests.exceptions.RequestException:
+            return jsonify({'error': 'Service unavailable'}), 503
+        except Exception:
+            return jsonify({'error': 'Internal server error'}), 500
 
     return decorated
