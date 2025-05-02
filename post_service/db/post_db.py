@@ -314,7 +314,7 @@ class PostDB:
             offset = (page - 1) * per_page
             comments = session.query(Comment).filter(
                 Comment.post_id == int(post_id)
-            ).order_by(Comment.created_at.desc()
+            ).order_by(Comment.created_at.asc()
                        ).limit(per_page).offset(offset).all()
 
             comments_list = [
