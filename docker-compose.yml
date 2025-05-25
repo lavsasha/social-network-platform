@@ -195,13 +195,13 @@ services:
       - ./broker:/app/broker
     command: >
       sh -c "
-        echo 'Ожидание ClickHouse...';
+        echo 'Waiting for ClickHouse...';
         while ! nc -z clickhouse 8123; do sleep 2; done;
-
-        echo 'Создание таблиц ClickHouse...';
+      
+        echo 'Creating ClickHouse tables...';
         python statistic_service/db/init_clickhouse.py;
-
-        echo 'Запуск основного сервиса статистики...';
+      
+        echo 'Starting main statistics service...';
         python statistic_service/main.py"
     ports:
       - "50052:50052"
@@ -213,6 +213,20 @@ services:
     environment:
       - PYTHONPATH=/app:/app/proto:/app/broker
       - CLICKHOUSE_URL=clickhouse://default:password@clickhouse:8123/default
+
+  aggregator:
+    build:
+      context: .
+      dockerfile: aggregator/Dockerfile
+    environment:
+      - API_GATEWAY_URL=http://api_gateway:8080
+      - STATISTIC_SERVICE_URL=statistic_service:50052
+    networks:
+      - social-network
+    depends_on:
+      - api_gateway
+      - statistic_service
+    restart: unless-stopped
 
 networks:
   social-network:

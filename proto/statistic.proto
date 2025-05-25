@@ -7,6 +7,7 @@ service StatisticService {
     rpc GetPostDynamic(PostDynamicRequest) returns (PostDynamicResponse) {}
     rpc GetTopPosts(TopPostsRequest) returns (TopPostsResponse) {}
     rpc GetTopUsers(TopUsersRequest) returns (TopUsersResponse) {}
+    rpc GetPostIds(GetPostIdsRequest) returns (GetPostIdsResponse) {}
 }
 
 message PostStatsRequest {
@@ -18,7 +19,6 @@ message PostStatsResponse {
     uint64 views_count = 1;
     uint64 likes_count = 2;
     uint64 comments_count = 3;
-    string updated_at = 4;
 }
 
 message PostDynamicRequest {
@@ -48,6 +48,7 @@ message TopPostsRequest {
         COMMENTS = 2;
     }
     Metric metric = 1;
+    string user_id = 2;
 }
 
 message TopPost {
@@ -66,6 +67,7 @@ message TopUsersRequest {
         COMMENTS = 2;
     }
     Metric metric = 1;
+    string user_id = 2;
 }
 
 message TopUser {
@@ -75,4 +77,11 @@ message TopUser {
 
 message TopUsersResponse {
     repeated TopUser users = 1;
+}
+
+message GetPostIdsRequest {
+}
+
+message GetPostIdsResponse {
+    repeated string post_ids = 1;
 }

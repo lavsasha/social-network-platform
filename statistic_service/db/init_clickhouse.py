@@ -9,14 +9,14 @@ def init_clickhouse_tables():
     session = make_session(engine)
 
     try:
-        print("Подключение к ClickHouse...")
+        print("Connecting to ClickHouse...")
         for model in [Event, PostStats, PostDailyStats, UserStats]:
-            print(f"Создание таблицы: {model.__tablename__}")
+            print(f"Creating table: {model.__tablename__}")
             model.__table__.create(bind=engine, checkfirst=True)
 
-        print("Все таблицы ClickHouse успешно созданы.")
+        print("All ClickHouse tables created successfully.")
     except Exception as e:
-        print(f"Ошибка при создании таблиц ClickHouse: {e}")
+        print(f"Error creating ClickHouse tables: {e}")
         raise
     finally:
         session.close()

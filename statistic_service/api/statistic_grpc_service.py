@@ -1,6 +1,6 @@
 import grpc
 from proto import statistic_pb2, statistic_pb2_grpc
-from db.statistic_db import StatisticDB
+from statistic_service.db.statistic_db import StatisticDB
 
 
 class StatisticServiceServicer(statistic_pb2_grpc.StatisticServiceServicer):
@@ -8,59 +8,43 @@ class StatisticServiceServicer(statistic_pb2_grpc.StatisticServiceServicer):
         self.db = db
 
     def GetPostStats(self, request, context):
-        agg_sess = self.db.get_session()
+        session = self.db.get_session()
         try:
-            self.db.aggregate_events(agg_sess, request.post_id, request.user_id)
-            agg_sess.commit()
-        except Exception as e:
-            agg_sess.rollback()
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"aggregate_events failed: {e}")
-            return statistic_pb2.PostStatsResponse()
-        finally:
-            agg_sess.close()
+            self.db.aggregate_events(session, request.post_id, request.user_id)
+            stats = self.db.get_post_stats(session, request.post_id)
+            session.commit()
 
-        read_sess = self.db.get_session()
-        try:
-            stats = self.db.get_post_stats(read_sess, request.post_id)
             return statistic_pb2.PostStatsResponse(
                 views_count=int(stats["views_count"]),
                 likes_count=int(stats["likes_count"]),
-                comments_count=int(stats["comments_count"]),
-                updated_at=stats["updated_at"]
+                comments_count=int(stats["comments_count"])
             )
         except Exception as e:
+            session.rollback()
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"get_post_stats failed: {e}")
+            context.set_details(f"Post stats operation failed: {e}")
             return statistic_pb2.PostStatsResponse()
         finally:
-            read_sess.close()
+            session.close()
 
     def GetPostDynamic(self, request, context):
-        agg_sess = self.db.get_session()
+        session = self.db.get_session()
         try:
-            self.db.aggregate_events(agg_sess, request.post_id, request.user_id)
-            agg_sess.commit()
-        except Exception as e:
-            agg_sess.rollback()
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"aggregate_events failed: {e}")
-            return statistic_pb2.PostDynamicResponse()
-        finally:
-            agg_sess.close()
+            self.db.aggregate_events(session, request.post_id, request.user_id)
 
-        read_sess = self.db.get_session()
-        try:
             metric_map = {
                 statistic_pb2.PostDynamicRequest.VIEWS: 'views',
                 statistic_pb2.PostDynamicRequest.LIKES: 'likes',
                 statistic_pb2.PostDynamicRequest.COMMENTS: 'comments'
             }
+
             dynamic = self.db.get_post_dynamic(
-                read_sess,
+                session,
                 post_id=request.post_id,
                 metric=metric_map[request.metric]
             )
+
+            session.commit()
 
             return statistic_pb2.PostDynamicResponse(
                 stats=[statistic_pb2.DailyStat(
@@ -69,11 +53,12 @@ class StatisticServiceServicer(statistic_pb2_grpc.StatisticServiceServicer):
                 ) for item in dynamic]
             )
         except Exception as e:
+            session.rollback()
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"get_post_dynamic failed: {e}")
             return statistic_pb2.PostDynamicResponse()
         finally:
-            read_sess.close()
+            session.close()
 
     def GetTopPosts(self, request, context):
         session = self.db.get_session()
@@ -124,5 +109,17 @@ class StatisticServiceServicer(statistic_pb2_grpc.StatisticServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"get_top_users failed: {e}")
             return statistic_pb2.TopUsersResponse()
+        finally:
+            session.close()
+
+    def GetPostIds(self, request, context):
+        session = self.db.get_session()
+        try:
+            post_ids = self.db.get_unique_post_ids(session)
+            return statistic_pb2.GetPostIdsResponse(post_ids=post_ids)
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"get_post_ids failed: {e}")
+            return statistic_pb2.GetPostIdsResponse()
         finally:
             session.close()

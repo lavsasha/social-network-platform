@@ -1,15 +1,10 @@
 import grpc
 from datetime import datetime
-from sqlalchemy import create_engine, func, desc, and_, or_, select
+from sqlalchemy import create_engine, func, desc, distinct
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.dialects.postgresql import insert
-from .clickhouse_models import (
-    Base, Event, PostStats, PostDailyStats, UserStats, EventType
-)
-from sqlalchemy import case
+from .clickhouse_models import (Event, PostStats, PostDailyStats, UserStats, EventType)
 from sqlalchemy import text
-import logging
 
 
 class StatisticDB:
@@ -20,9 +15,7 @@ class StatisticDB:
     def get_session(self):
         return self.Session()
 
-    def aggregate_events(self, session, post_id=None, user_id=None):
-        logger = logging.getLogger("StatisticDB.aggregate_events")
-        logger.info(f"→ aggregate_events(post_id={post_id}, user_id={user_id})")
+    def aggregate_events(self, session, post_id, user_id):
         try:
             total_query = session.query(
                 Event.post_id,
@@ -30,12 +23,10 @@ class StatisticDB:
                 func.count(func.if_(Event.event_type == EventType.LIKE, 1, None)).label("likes"),
                 func.count(func.if_(Event.event_type == EventType.COMMENT, 1, None)).label("comments")
             )
-            if post_id:
-                total_query = total_query.filter(Event.post_id == post_id)
 
+            total_query = total_query.filter(Event.post_id == post_id)
             total_query = total_query.group_by(Event.post_id)
             total_stats = total_query.all()
-            logger.info(f"   total_stats rows: {len(total_stats)}")
 
             for stat in total_stats:
                 stats_dict = {
@@ -45,8 +36,7 @@ class StatisticDB:
                     'comments': stat.comments
                 }
                 self._update_post_stats(session, stats_dict)
-                if user_id:
-                    self._update_user_stats(session, user_id, stats_dict)
+                self._update_user_stats(session, user_id, stats_dict)
 
             daily_query = session.query(
                 Event.post_id,
@@ -55,13 +45,10 @@ class StatisticDB:
                 func.count(func.if_(Event.event_type == EventType.LIKE, 1, None)).label("likes"),
                 func.count(func.if_(Event.event_type == EventType.COMMENT, 1, None)).label("comments")
             )
-            if post_id:
-                daily_query = daily_query.filter(Event.post_id == post_id)
 
+            daily_query = daily_query.filter(Event.post_id == post_id)
             daily_query = daily_query.group_by(Event.post_id, Event.event_date)
-            print(str(daily_query.statement.compile(compile_kwargs={"literal_binds": True})))
             daily_stats = daily_query.all()
-            logger.info(f"   daily_stats rows: {len(daily_stats)}")
 
             for stat in daily_stats:
                 stats_dict = {
@@ -73,20 +60,13 @@ class StatisticDB:
                 }
                 self._update_daily_stats(session, stats_dict)
 
-            if post_id:
-                stmt = text("ALTER TABLE events DELETE WHERE post_id = :post_id")
-                session.execute(stmt, {"post_id": post_id})
-                logger.info(f"   issued DELETE for post_id={post_id}")
-            else:
-                session.execute(text("ALTER TABLE events DELETE WHERE 1"))
-                logger.info("   issued DELETE for all events")
-
+            stmt = text("ALTER TABLE events DELETE WHERE post_id = :post_id")
+            session.execute(stmt, {"post_id": post_id})
             session.commit()
-            logger.info("← aggregate_events ok")
             return True
 
-        except Exception:
-            logger.exception("!!! aggregate_events failure")
+        except Exception as e:
+            print(f"Error in aggregate_events: {str(e)}")
             session.rollback()
             raise
 
@@ -158,18 +138,17 @@ class StatisticDB:
                 return {
                     "views_count": 0,
                     "likes_count": 0,
-                    "comments_count": 0,
-                    "updated_at": datetime.utcnow().isoformat()
+                    "comments_count": 0
                 }
 
             return {
                 "views_count": stats.views_count or 0,
                 "likes_count": stats.likes_count or 0,
-                "comments_count": stats.comments_count or 0,
-                "updated_at": stats.updated_at.isoformat()
+                "comments_count": stats.comments_count or 0
             }
         except Exception as e:
             session.rollback()
+            print(f"Database error in get_post_stats: {str(e)}")
             raise RuntimeError(f"Database error: {str(e)}")
 
     def get_post_dynamic(self, session, post_id: str, metric: str):
@@ -186,6 +165,7 @@ class StatisticDB:
             return [{'date': stat.date.isoformat(), 'count': getattr(stat, f"{metric}_count")}
                     for stat in stats]
         except SQLAlchemyError as e:
+            print(f"Database error in get_post_dynamic: {str(e)}")
             raise
 
     def get_top_posts(self, session, metric: str, limit: int = 10):
@@ -201,6 +181,7 @@ class StatisticDB:
 
             return [{'post_id': post_id, 'count': count} for post_id, count in top]
         except SQLAlchemyError as e:
+            print(f"Database error in get_top_posts: {str(e)}")
             raise
 
     def get_top_users(self, session, metric: str, limit: int = 10):
@@ -216,6 +197,15 @@ class StatisticDB:
 
             return [{'user_id': user_id, 'count': count} for user_id, count in top]
         except SQLAlchemyError as e:
+            print(f"Database error in get_top_users: {str(e)}")
+            raise
+
+    def get_unique_post_ids(self, session):
+        try:
+            post_ids = session.query(distinct(Event.post_id)).all()
+            return [post_id[0] for post_id in post_ids if post_id[0]]
+        except Exception as e:
+            print(f"Failed to get post ids from events: {str(e)}")
             raise
 
     def close(self):
