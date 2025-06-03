@@ -34,6 +34,11 @@ class StatisticServiceStub(object):
                 request_serializer=proto_dot_statistic__pb2.TopUsersRequest.SerializeToString,
                 response_deserializer=proto_dot_statistic__pb2.TopUsersResponse.FromString,
                 )
+        self.GetPostIds = channel.unary_unary(
+                '/statistic.StatisticService/GetPostIds',
+                request_serializer=proto_dot_statistic__pb2.GetPostIdsRequest.SerializeToString,
+                response_deserializer=proto_dot_statistic__pb2.GetPostIdsResponse.FromString,
+                )
 
 
 class StatisticServiceServicer(object):
@@ -63,6 +68,12 @@ class StatisticServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetPostIds(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_StatisticServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -85,6 +96,11 @@ def add_StatisticServiceServicer_to_server(servicer, server):
                     servicer.GetTopUsers,
                     request_deserializer=proto_dot_statistic__pb2.TopUsersRequest.FromString,
                     response_serializer=proto_dot_statistic__pb2.TopUsersResponse.SerializeToString,
+            ),
+            'GetPostIds': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPostIds,
+                    request_deserializer=proto_dot_statistic__pb2.GetPostIdsRequest.FromString,
+                    response_serializer=proto_dot_statistic__pb2.GetPostIdsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -161,5 +177,22 @@ class StatisticService(object):
         return grpc.experimental.unary_unary(request, target, '/statistic.StatisticService/GetTopUsers',
             proto_dot_statistic__pb2.TopUsersRequest.SerializeToString,
             proto_dot_statistic__pb2.TopUsersResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetPostIds(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/statistic.StatisticService/GetPostIds',
+            proto_dot_statistic__pb2.GetPostIdsRequest.SerializeToString,
+            proto_dot_statistic__pb2.GetPostIdsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
