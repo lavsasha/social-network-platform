@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package statistic;
+
+service StatisticService {
+    rpc GetPostStats(PostStatsRequest) returns (PostStatsResponse) {}
+    rpc GetPostDynamic(PostDynamicRequest) returns (PostDynamicResponse) {}
+    rpc GetTopPosts(TopPostsRequest) returns (TopPostsResponse) {}
+    rpc GetTopUsers(TopUsersRequest) returns (TopUsersResponse) {}
+    rpc GetPostIds(GetPostIdsRequest) returns (GetPostIdsResponse) {}
+}
+
+message PostStatsRequest {
+    string post_id = 1;
+    string user_id = 2;
+}
+
+message PostStatsResponse {
+    uint64 views_count = 1;
+    uint64 likes_count = 2;
+    uint64 comments_count = 3;
+}
+
+message PostDynamicRequest {
+    string post_id = 1;
+    string user_id = 2;
+    enum Metric {
+        VIEWS = 0;
+        LIKES = 1;
+        COMMENTS = 2;
+    }
+    Metric metric = 3;
+}
+
+message DailyStat {
+    string date = 1;
+    uint64 count = 2;
+}
+
+message PostDynamicResponse {
+    repeated DailyStat stats = 1;
+}
+
+message TopPostsRequest {
+    enum Metric {
+        VIEWS = 0;
+        LIKES = 1;
+        COMMENTS = 2;
+    }
+    Metric metric = 1;
+    string user_id = 2;
+}
+
+message TopPost {
+    string post_id = 1;
+    uint64 count = 2;
+}
+
+message TopPostsResponse {
+    repeated TopPost posts = 1;
+}
+
+message TopUsersRequest {
+    enum Metric {
+        VIEWS = 0;
+        LIKES = 1;
+        COMMENTS = 2;
+    }
+    Metric metric = 1;
+    string user_id = 2;
+}
+
+message TopUser {
+    string user_id = 1;
+    uint64 count = 2;
+}
+
+message TopUsersResponse {
+    repeated TopUser users = 1;
+}
+
+message GetPostIdsRequest {
+}
+
+message GetPostIdsResponse {
+    repeated string post_ids = 1;
+}

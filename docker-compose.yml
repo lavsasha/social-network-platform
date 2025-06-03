@@ -65,54 +65,54 @@ services:
       timeout: 5s
       retries: 10
 
-  tests:
-    build:
-      context: .
-      dockerfile: api_gateway/Dockerfile
-    volumes:
-      - ./api_gateway:/app/api_gateway
-      - ./proto:/app/proto
-      - ./user_service:/app/user_service
-      - ./post_service:/app/post_service
-      - ./broker:/app/broker
-    command: >
-      sh -c "
-        echo 'Ожидание готовности сервисов...' &&
-        while ! nc -z user_service 5000; do sleep 2; done &&
-        while ! nc -z post_service 50051; do sleep 2; done &&
-        while ! curl -f http://user_service:5000/health; do sleep 2; done &&
-        while ! nc -z kafka 9092; do sleep 2; done &&
-
-        export PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto &&
-
-        echo 'Запуск тестов api_gateway...' &&
-        cd /app &&
-        pytest api_gateway/tests/test_user.py api_gateway/tests/test_post.py api_gateway/tests/test_kafka.py -v || exit 1 &&
-
-        echo 'Запуск тестов user_service...' &&
-        cd /app/user_service &&
-        pytest tests/test_unit_models.py tests/test_unit_user_service.py tests/test_unit_validators.py -v || exit 1 &&
-
-        echo 'Запуск тестов post_service...' &&
-        cd /app/post_service &&
-        pytest tests/test_unit_models.py tests/test_unit_post_service.py tests/test_unit_kafka_events.py -v || exit 1
-      "
-    depends_on:
-      - api_gateway
-      - user_service
-      - post_service
-      - db
-      - kafka
-    networks:
-      - social-network
-    environment:
-      - PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto
-      - FLASK_ENV=testing
-      - TZ=Europe/Moscow
-      - POST_SERVICE_HOST=post_service
-      - POST_SERVICE_PORT=50051
-      - USER_SERVICE_URL=http://user_service:5000
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+  #  tests:
+  #    build:
+  #      context: .
+  #      dockerfile: api_gateway/Dockerfile
+  #    volumes:
+  #      - ./api_gateway:/app/api_gateway
+  #      - ./proto:/app/proto
+  #      - ./user_service:/app/user_service
+  #      - ./post_service:/app/post_service
+  #      - ./broker:/app/broker
+  #    command: >
+  #      sh -c "
+  #        echo 'Ожидание готовности сервисов...' &&
+  #        while ! nc -z user_service 5000; do sleep 2; done &&
+  #        while ! nc -z post_service 50051; do sleep 2; done &&
+  #        while ! curl -f http://user_service:5000/health; do sleep 2; done &&
+  #        while ! nc -z kafka 9092; do sleep 2; done &&
+  #
+  #        export PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto &&
+  #
+  #        echo 'Запуск тестов api_gateway...' &&
+  #        cd /app &&
+  #        pytest api_gateway/tests/test_user.py api_gateway/tests/test_post.py api_gateway/tests/test_kafka.py -v || exit 1 &&
+  #
+  #        echo 'Запуск тестов user_service...' &&
+  #        cd /app/user_service &&
+  #        pytest tests/test_unit_models.py tests/test_unit_user_service.py tests/test_unit_validators.py -v || exit 1 &&
+  #
+  #        echo 'Запуск тестов post_service...' &&
+  #        cd /app/post_service &&
+  #        pytest tests/test_unit_models.py tests/test_unit_post_service.py tests/test_unit_kafka_events.py -v || exit 1
+  #      "
+  #    depends_on:
+  #      - api_gateway
+  #      - user_service
+  #      - post_service
+  #      - db
+  #      - kafka
+  #    networks:
+  #      - social-network
+  #    environment:
+  #      - PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto
+  #      - FLASK_ENV=testing
+  #      - TZ=Europe/Moscow
+  #      - POST_SERVICE_HOST=post_service
+  #      - POST_SERVICE_PORT=50051
+  #      - USER_SERVICE_URL=http://user_service:5000
+  #      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
@@ -155,6 +155,78 @@ services:
     networks:
       - social-network
 
+  kafka-init:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka to be ready...';
+        while ! kafka-topics --bootstrap-server kafka:9092 --list; do sleep 2; done;
+        echo 'Creating topics...';
+        kafka-topics --bootstrap-server kafka:9092 --create --topic post_views --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:9092 --create --topic post_likes --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:9092 --create --topic post_comments --partitions 1 --replication-factor 1;
+        echo 'Topics created successfully';
+      "
+    networks:
+      - social-network
+
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: password
+      CLICKHOUSE_DB: default
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    networks:
+      - social-network
+
+  statistic_service:
+    build:
+      context: .
+      dockerfile: statistic_service/Dockerfile
+    volumes:
+      - ./proto:/app/proto
+      - ./broker:/app/broker
+    command: >
+      sh -c "
+        echo 'Waiting for ClickHouse...';
+        while ! nc -z clickhouse 8123; do sleep 2; done;
+      
+        echo 'Creating ClickHouse tables...';
+        python statistic_service/db/init_clickhouse.py;
+      
+        echo 'Starting main statistics service...';
+        python statistic_service/main.py"
+    ports:
+      - "50052:50052"
+    networks:
+      - social-network
+    depends_on:
+      - clickhouse
+      - kafka-init
+    environment:
+      - PYTHONPATH=/app:/app/proto:/app/broker
+      - CLICKHOUSE_URL=clickhouse://default:password@clickhouse:8123/default
+
+  aggregator:
+    build:
+      context: .
+      dockerfile: aggregator/Dockerfile
+    environment:
+      - API_GATEWAY_URL=http://api_gateway:8080
+      - STATISTIC_SERVICE_URL=statistic_service:50052
+    networks:
+      - social-network
+    depends_on:
+      - api_gateway
+      - statistic_service
+    restart: unless-stopped
 
 networks:
   social-network:

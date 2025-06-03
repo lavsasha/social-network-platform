@@ -1,0 +1,7 @@
+grpcio==1.60.0
+grpcio-tools==1.60.0
+clickhouse-sqlalchemy>=0.2.7
+sqlalchemy>=2.0.25
+clickhouse-driver>=0.2.7
+requests==2.31.0
+zstd==1.5.5.1
