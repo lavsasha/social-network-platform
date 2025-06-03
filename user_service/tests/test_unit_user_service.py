@@ -2,7 +2,10 @@ from unittest.mock import patch, MagicMock
 import pytest
 import datetime
 import jwt
-from ..user_service import app, User, generate_jwt, decode_jwt
+from user_service.user_service import app, User, UserProfile, generate_jwt, decode_jwt
+from werkzeug.security import generate_password_hash, check_password_hash
+import pytest
+from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
@@ -84,6 +87,26 @@ def test_register_user_duplicate_login(mock_db):
     assert response.json == {"message": "Login is already taken."}
 
 
+def test_login_user_success(mock_db):
+    mock_user = MagicMock()
+    mock_user.first.return_value = User(
+        user_id="123",
+        login="test_user",
+        hashed_password=generate_password_hash("P@ssword123", method='scrypt'),
+        is_active=True
+    )
+    mock_db["mock_user_query"].filter_by.return_value = mock_user
+
+    response = app.test_client().post('/login', json={
+        "login": "test_user",
+        "password": "P@ssword123"
+    })
+
+    assert response.status_code == 200
+    assert "token" in response.json
+    mock_db["mock_user_query"].filter_by.assert_called_once_with(login="test_user")
+
+
 def test_login_user_invalid_password(mock_db):
     mock_user = MagicMock()
     mock_user.first.return_value = User(
@@ -114,6 +137,26 @@ def test_login_user_not_found(mock_db):
 
     assert response.status_code == 401
     assert response.json == {"message": "Invalid credentials."}
+
+
+def test_update_profile_saves_to_db(mock_db):
+    mock_user = MagicMock()
+    mock_user.profile = UserProfile(profile_id="456", user_id="123")
+    mock_db["mock_user_query"].get.return_value = mock_user
+
+    with patch('user_service.decode_jwt', return_value={"user_id": "123"}):
+        response = app.test_client().put('/profile',
+                                         headers={"Authorization": "valid_token"},
+                                         json={
+                                             "first_name": "NewName",
+                                             "profile": {"city": "Moscow"}
+                                         }
+                                         )
+
+    assert response.status_code == 200
+    assert mock_user.first_name == "NewName"
+    assert mock_user.profile.city == "Moscow"
+    mock_db["mock_commit"].assert_called_once()
 
 
 @patch('app.user_service.user_service.jwt.encode')

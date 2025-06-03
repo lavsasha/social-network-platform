@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15proto/statistic.proto\x12\tstatistic\"4\n\x10PostStatsRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"i\n\x11PostStatsResponse\x12\x13\n\x0bviews_count\x18\x01 \x01(\x04\x12\x13\n\x0blikes_count\x18\x02 \x01(\x04\x12\x16\n\x0e\x63omments_count\x18\x03 \x01(\x04\x12\x12\n\nupdated_at\x18\x04 \x01(\t\"\x9a\x01\n\x12PostDynamicRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x34\n\x06metric\x18\x03 \x01(\x0e\x32$.statistic.PostDynamicRequest.Metric\",\n\x06Metric\x12\t\n\x05VIEWS\x10\x00\x12\t\n\x05LIKES\x10\x01\x12\x0c\n\x08\x43OMMENTS\x10\x02\"(\n\tDailyStat\x12\x0c\n\x04\x64\x61te\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\":\n\x13PostDynamicResponse\x12#\n\x05stats\x18\x01 \x03(\x0b\x32\x14.statistic.DailyStat\"r\n\x0fTopPostsRequest\x12\x31\n\x06metric\x18\x01 \x01(\x0e\x32!.statistic.TopPostsRequest.Metric\",\n\x06Metric\x12\t\n\x05VIEWS\x10\x00\x12\t\n\x05LIKES\x10\x01\x12\x0c\n\x08\x43OMMENTS\x10\x02\")\n\x07TopPost\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\"5\n\x10TopPostsResponse\x12!\n\x05posts\x18\x01 \x03(\x0b\x32\x12.statistic.TopPost\"r\n\x0fTopUsersRequest\x12\x31\n\x06metric\x18\x01 \x01(\x0e\x32!.statistic.TopUsersRequest.Metric\",\n\x06Metric\x12\t\n\x05VIEWS\x10\x00\x12\t\n\x05LIKES\x10\x01\x12\x0c\n\x08\x43OMMENTS\x10\x02\")\n\x07TopUser\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\"5\n\x10TopUsersResponse\x12!\n\x05users\x18\x01 \x03(\x0b\x32\x12.statistic.TopUser2\xc6\x02\n\x10StatisticService\x12K\n\x0cGetPostStats\x12\x1b.statistic.PostStatsRequest\x1a\x1c.statistic.PostStatsResponse\"\x00\x12Q\n\x0eGetPostDynamic\x12\x1d.statistic.PostDynamicRequest\x1a\x1e.statistic.PostDynamicResponse\"\x00\x12H\n\x0bGetTopPosts\x12\x1a.statistic.TopPostsRequest\x1a\x1b.statistic.TopPostsResponse\"\x00\x12H\n\x0bGetTopUsers\x12\x1a.statistic.TopUsersRequest\x1a\x1b.statistic.TopUsersResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15proto/statistic.proto\x12\tstatistic\"4\n\x10PostStatsRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"U\n\x11PostStatsResponse\x12\x13\n\x0bviews_count\x18\x01 \x01(\x04\x12\x13\n\x0blikes_count\x18\x02 \x01(\x04\x12\x16\n\x0e\x63omments_count\x18\x03 \x01(\x04\"\x9a\x01\n\x12PostDynamicRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x34\n\x06metric\x18\x03 \x01(\x0e\x32$.statistic.PostDynamicRequest.Metric\",\n\x06Metric\x12\t\n\x05VIEWS\x10\x00\x12\t\n\x05LIKES\x10\x01\x12\x0c\n\x08\x43OMMENTS\x10\x02\"(\n\tDailyStat\x12\x0c\n\x04\x64\x61te\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\":\n\x13PostDynamicResponse\x12#\n\x05stats\x18\x01 \x03(\x0b\x32\x14.statistic.DailyStat\"\x83\x01\n\x0fTopPostsRequest\x12\x31\n\x06metric\x18\x01 \x01(\x0e\x32!.statistic.TopPostsRequest.Metric\x12\x0f\n\x07user_id\x18\x02 \x01(\t\",\n\x06Metric\x12\t\n\x05VIEWS\x10\x00\x12\t\n\x05LIKES\x10\x01\x12\x0c\n\x08\x43OMMENTS\x10\x02\")\n\x07TopPost\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\"5\n\x10TopPostsResponse\x12!\n\x05posts\x18\x01 \x03(\x0b\x32\x12.statistic.TopPost\"\x83\x01\n\x0fTopUsersRequest\x12\x31\n\x06metric\x18\x01 \x01(\x0e\x32!.statistic.TopUsersRequest.Metric\x12\x0f\n\x07user_id\x18\x02 \x01(\t\",\n\x06Metric\x12\t\n\x05VIEWS\x10\x00\x12\t\n\x05LIKES\x10\x01\x12\x0c\n\x08\x43OMMENTS\x10\x02\")\n\x07TopUser\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\"5\n\x10TopUsersResponse\x12!\n\x05users\x18\x01 \x03(\x0b\x32\x12.statistic.TopUser\"\x13\n\x11GetPostIdsRequest\"&\n\x12GetPostIdsResponse\x12\x10\n\x08post_ids\x18\x01 \x03(\t2\x93\x03\n\x10StatisticService\x12K\n\x0cGetPostStats\x12\x1b.statistic.PostStatsRequest\x1a\x1c.statistic.PostStatsResponse\"\x00\x12Q\n\x0eGetPostDynamic\x12\x1d.statistic.PostDynamicRequest\x1a\x1e.statistic.PostDynamicResponse\"\x00\x12H\n\x0bGetTopPosts\x12\x1a.statistic.TopPostsRequest\x1a\x1b.statistic.TopPostsResponse\"\x00\x12H\n\x0bGetTopUsers\x12\x1a.statistic.TopUsersRequest\x1a\x1b.statistic.TopUsersResponse\"\x00\x12K\n\nGetPostIds\x12\x1c.statistic.GetPostIdsRequest\x1a\x1d.statistic.GetPostIdsResponse\"\x00\x62\x06proto3')
 
 
 
@@ -29,6 +29,8 @@ _TOPPOSTSRESPONSE = DESCRIPTOR.message_types_by_name['TopPostsResponse']
 _TOPUSERSREQUEST = DESCRIPTOR.message_types_by_name['TopUsersRequest']
 _TOPUSER = DESCRIPTOR.message_types_by_name['TopUser']
 _TOPUSERSRESPONSE = DESCRIPTOR.message_types_by_name['TopUsersResponse']
+_GETPOSTIDSREQUEST = DESCRIPTOR.message_types_by_name['GetPostIdsRequest']
+_GETPOSTIDSRESPONSE = DESCRIPTOR.message_types_by_name['GetPostIdsResponse']
 _POSTDYNAMICREQUEST_METRIC = _POSTDYNAMICREQUEST.enum_types_by_name['Metric']
 _TOPPOSTSREQUEST_METRIC = _TOPPOSTSREQUEST.enum_types_by_name['Metric']
 _TOPUSERSREQUEST_METRIC = _TOPUSERSREQUEST.enum_types_by_name['Metric']
@@ -109,6 +111,20 @@ TopUsersResponse = _reflection.GeneratedProtocolMessageType('TopUsersResponse', 
   })
 _sym_db.RegisterMessage(TopUsersResponse)
 
+GetPostIdsRequest = _reflection.GeneratedProtocolMessageType('GetPostIdsRequest', (_message.Message,), {
+  'DESCRIPTOR' : _GETPOSTIDSREQUEST,
+  '__module__' : 'proto.statistic_pb2'
+  # @@protoc_insertion_point(class_scope:statistic.GetPostIdsRequest)
+  })
+_sym_db.RegisterMessage(GetPostIdsRequest)
+
+GetPostIdsResponse = _reflection.GeneratedProtocolMessageType('GetPostIdsResponse', (_message.Message,), {
+  'DESCRIPTOR' : _GETPOSTIDSRESPONSE,
+  '__module__' : 'proto.statistic_pb2'
+  # @@protoc_insertion_point(class_scope:statistic.GetPostIdsResponse)
+  })
+_sym_db.RegisterMessage(GetPostIdsResponse)
+
 _STATISTICSERVICE = DESCRIPTOR.services_by_name['StatisticService']
 if _descriptor._USE_C_DESCRIPTORS == False:
 
@@ -116,31 +132,35 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _POSTSTATSREQUEST._serialized_start=36
   _POSTSTATSREQUEST._serialized_end=88
   _POSTSTATSRESPONSE._serialized_start=90
-  _POSTSTATSRESPONSE._serialized_end=195
-  _POSTDYNAMICREQUEST._serialized_start=198
-  _POSTDYNAMICREQUEST._serialized_end=352
-  _POSTDYNAMICREQUEST_METRIC._serialized_start=308
-  _POSTDYNAMICREQUEST_METRIC._serialized_end=352
-  _DAILYSTAT._serialized_start=354
-  _DAILYSTAT._serialized_end=394
-  _POSTDYNAMICRESPONSE._serialized_start=396
-  _POSTDYNAMICRESPONSE._serialized_end=454
-  _TOPPOSTSREQUEST._serialized_start=456
-  _TOPPOSTSREQUEST._serialized_end=570
-  _TOPPOSTSREQUEST_METRIC._serialized_start=308
-  _TOPPOSTSREQUEST_METRIC._serialized_end=352
-  _TOPPOST._serialized_start=572
-  _TOPPOST._serialized_end=613
-  _TOPPOSTSRESPONSE._serialized_start=615
-  _TOPPOSTSRESPONSE._serialized_end=668
-  _TOPUSERSREQUEST._serialized_start=670
-  _TOPUSERSREQUEST._serialized_end=784
-  _TOPUSERSREQUEST_METRIC._serialized_start=308
-  _TOPUSERSREQUEST_METRIC._serialized_end=352
-  _TOPUSER._serialized_start=786
-  _TOPUSER._serialized_end=827
-  _TOPUSERSRESPONSE._serialized_start=829
-  _TOPUSERSRESPONSE._serialized_end=882
-  _STATISTICSERVICE._serialized_start=885
-  _STATISTICSERVICE._serialized_end=1211
+  _POSTSTATSRESPONSE._serialized_end=175
+  _POSTDYNAMICREQUEST._serialized_start=178
+  _POSTDYNAMICREQUEST._serialized_end=332
+  _POSTDYNAMICREQUEST_METRIC._serialized_start=288
+  _POSTDYNAMICREQUEST_METRIC._serialized_end=332
+  _DAILYSTAT._serialized_start=334
+  _DAILYSTAT._serialized_end=374
+  _POSTDYNAMICRESPONSE._serialized_start=376
+  _POSTDYNAMICRESPONSE._serialized_end=434
+  _TOPPOSTSREQUEST._serialized_start=437
+  _TOPPOSTSREQUEST._serialized_end=568
+  _TOPPOSTSREQUEST_METRIC._serialized_start=288
+  _TOPPOSTSREQUEST_METRIC._serialized_end=332
+  _TOPPOST._serialized_start=570
+  _TOPPOST._serialized_end=611
+  _TOPPOSTSRESPONSE._serialized_start=613
+  _TOPPOSTSRESPONSE._serialized_end=666
+  _TOPUSERSREQUEST._serialized_start=669
+  _TOPUSERSREQUEST._serialized_end=800
+  _TOPUSERSREQUEST_METRIC._serialized_start=288
+  _TOPUSERSREQUEST_METRIC._serialized_end=332
+  _TOPUSER._serialized_start=802
+  _TOPUSER._serialized_end=843
+  _TOPUSERSRESPONSE._serialized_start=845
+  _TOPUSERSRESPONSE._serialized_end=898
+  _GETPOSTIDSREQUEST._serialized_start=900
+  _GETPOSTIDSREQUEST._serialized_end=919
+  _GETPOSTIDSRESPONSE._serialized_start=921
+  _GETPOSTIDSRESPONSE._serialized_end=959
+  _STATISTICSERVICE._serialized_start=962
+  _STATISTICSERVICE._serialized_end=1365
 # @@protoc_insertion_point(module_scope)
