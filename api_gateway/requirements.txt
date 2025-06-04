@@ -16,3 +16,4 @@ pytest-mock>=3.0.0
 pytest-dependency
 coverage
 confluent-kafka==2.2.0
+clickhouse-sqlalchemy

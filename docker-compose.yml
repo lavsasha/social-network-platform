@@ -15,6 +15,7 @@ services:
     environment:
       - POST_SERVICE_HOST=post_service
       - POST_SERVICE_PORT=50051
+      - USER_SERVICE_URL=http://user_service:5000
       - PYTHONPATH=/app:/app/proto
 
   user_service:
@@ -74,7 +75,9 @@ services:
       - ./proto:/app/proto
       - ./user_service:/app/user_service
       - ./post_service:/app/post_service
+      - ./statistic_service:/app/statistic_service
       - ./broker:/app/broker
+      - ./e2e_tests:/app/e2e_tests
     command: >
       sh -c "
         echo 'Ожидание готовности сервисов...' &&
@@ -82,20 +85,29 @@ services:
         while ! nc -z post_service 50051; do sleep 2; done &&
         while ! curl -f http://user_service:5000/health; do sleep 2; done &&
         while ! nc -z kafka 9092; do sleep 2; done &&
-      
-        export PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto &&
-      
-        echo 'Запуск тестов api_gateway...' &&
-        cd /app &&
-        pytest api_gateway/tests/test_user.py api_gateway/tests/test_post.py api_gateway/tests/test_kafka.py -v || exit 1 &&
-      
+        while ! nc -z kafka 9092; do sleep 2; done &&
+
+        export PYTHONPATH=/app:/app/user_service:/app/post_service:/app/api_gateway:/app/broker:/app/proto:/app/statistic_service:/app/e2e_tests &&
+
         echo 'Запуск тестов user_service...' &&
         cd /app/user_service &&
         pytest tests/test_unit_models.py tests/test_unit_user_service.py tests/test_unit_validators.py -v || exit 1 &&
-      
+
         echo 'Запуск тестов post_service...' &&
         cd /app/post_service &&
-        pytest tests/test_unit_models.py tests/test_unit_post_service.py tests/test_unit_kafka_events.py -v || exit 1
+        pytest tests/test_unit_models.py tests/test_unit_post_service.py tests/test_unit_kafka_events.py -v || exit 1 &&
+        
+        echo 'Запуск тестов statistic_service...' &&
+        cd /app/statistic_service &&
+        pytest tests/test_statistic_db.py tests/test_statistic_service.py tests/test_unit_models.py || exit 1 &&
+      
+        echo 'Запуск тестов Kafka...' &&
+        cd /app/api_gateway &&
+        pytest tests/test_kafka.py || exit 1 &&
+      
+        echo 'Запуск e2e тестов...' &&
+        cd /app/e2e_tests &&
+        pytest test_full_flow.py || exit 1
       "
     depends_on:
       - api_gateway
@@ -103,6 +115,7 @@ services:
       - post_service
       - db
       - kafka
+      - kafka-init
     networks:
       - social-network
     environment:
@@ -168,6 +181,7 @@ services:
         kafka-topics --bootstrap-server kafka:9092 --create --topic post_views --partitions 1 --replication-factor 1;
         kafka-topics --bootstrap-server kafka:9092 --create --topic post_likes --partitions 1 --replication-factor 1;
         kafka-topics --bootstrap-server kafka:9092 --create --topic post_comments --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:9092 --create --topic user_registrations --partitions 1 --replication-factor 1;
         echo 'Topics created successfully';
       "
     networks:

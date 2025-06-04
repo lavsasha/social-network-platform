@@ -1,14 +1,16 @@
 import pytest
 import requests
 import time
+import uuid
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def test_user():
+    uid = str(uuid.uuid4())[:8]
     return {
-        "login": "e2e_test_user",
+        "login": f"e2e_user_{uid}",
         "password": "E2eTest123!",
-        "email": "e2e.test@example.com",
+        "email": f"e2e_user_{uid}@example.com",
         "first_name": "EndToEnd",
         "last_name": "Test"
     }
@@ -55,7 +57,7 @@ def test_full_flow_post_creation_view_and_stats(auth_token):
         headers={"Authorization": auth_token}
     )
     stats = stats_response.json()
-    assert stats["views_count"] >= 3
+    assert stats["views_count"] == 3
 
 
 def test_post_likes_and_comments_flow(auth_token):
@@ -83,15 +85,21 @@ def test_post_likes_and_comments_flow(auth_token):
         json={"text": comment_text}
     )
 
-    time.sleep(5)
+    comments_response = requests.get(
+        f'http://api_gateway:8080/api/v1/posts/{post_id}/comments',
+        headers={"Authorization": auth_token}
+    )
+
+    comments = comments_response.json()["comments"]
+    assert any(comment["text"] == comment_text for comment in comments)
 
     stats_response = requests.get(
         f'http://api_gateway:8080/api/v1/posts/{post_id}/stats',
         headers={"Authorization": auth_token}
     )
     stats = stats_response.json()
-    assert stats["likes_count"] >= 2
-    assert stats["comments_count"] >= 1
+    assert stats["likes_count"] == 2
+    assert stats["comments_count"] == 1
 
 
 def test_user_profile_and_post_dynamics(auth_token):
@@ -107,6 +115,16 @@ def test_user_profile_and_post_dynamics(auth_token):
         headers={"Authorization": auth_token},
         json=update_data
     )
+
+    profile_response = requests.get(
+        'http://api_gateway:8080/api/v1/profile',
+        headers={"Authorization": auth_token}
+    )
+    profile = profile_response.json()
+
+    assert profile["first_name"] == "UpdatedFirstName"
+    assert profile["profile"]["city"] == "Test City"
+    assert profile["profile"]["about_me"] == "E2E Test User"
 
     post_ids = []
     for i in range(2):
@@ -127,24 +145,47 @@ def test_user_profile_and_post_dynamics(auth_token):
             headers={"Authorization": auth_token}
         )
 
+    requests.post(
+        f'http://api_gateway:8080/api/v1/posts/{post_ids[0]}/like',
+        headers={"Authorization": auth_token}
+    )
+
+    for _ in range(2):
+        requests.post(
+            f'http://api_gateway:8080/api/v1/posts/{post_ids[1]}/view',
+            headers={"Authorization": auth_token}
+        )
+
     for _ in range(3):
         requests.post(
             f'http://api_gateway:8080/api/v1/posts/{post_ids[1]}/like',
             headers={"Authorization": auth_token}
         )
 
-    time.sleep(10)
+    time.sleep(2)
 
     dynamics_response = requests.get(
         f'http://api_gateway:8080/api/v1/posts/{post_ids[0]}/dynamic?metric=views',
         headers={"Authorization": auth_token}
     )
     dynamics = dynamics_response.json()
-    assert any(d["count"] >= 5 for d in dynamics)
+    assert any(d["count"] == 5 for d in dynamics)
 
-    top_posts_response = requests.get(
+    requests.get(
+        f'http://api_gateway:8080/api/v1/posts/{post_ids[1]}/stats',
+        headers={"Authorization": auth_token}
+    )
+
+    top_posts_views_response = requests.get(
         'http://api_gateway:8080/api/v1/posts/top?metric=views',
         headers={"Authorization": auth_token}
     )
-    top_posts = top_posts_response.json()
-    assert any(p["post_id"] == post_ids[0] for p in top_posts)
+    top_posts = top_posts_views_response.json()
+    assert int(top_posts[0]["post_id"]) == int(post_ids[0])
+
+    top_posts_likes_response = requests.get(
+        'http://api_gateway:8080/api/v1/posts/top?metric=likes',
+        headers={"Authorization": auth_token}
+    )
+    top_posts = top_posts_likes_response.json()
+    assert int(top_posts[0]["post_id"]) == int(post_ids[1])

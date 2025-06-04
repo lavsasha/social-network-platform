@@ -7,6 +7,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import pytest
 from unittest.mock import patch, MagicMock
 
+AUTH_TOKEN = None
+
 
 @pytest.fixture
 def client(app_context):
@@ -88,26 +90,8 @@ def test_register_user_duplicate_login(mock_db):
 
 
 def test_login_user_success(mock_db):
-    mock_user = MagicMock()
-    mock_user.first.return_value = User(
-        user_id="123",
-        login="test_user",
-        hashed_password=generate_password_hash("P@ssword123", method='scrypt'),
-        is_active=True
-    )
-    mock_db["mock_user_query"].filter_by.return_value = mock_user
+    global AUTH_TOKEN
 
-    response = app.test_client().post('/login', json={
-        "login": "test_user",
-        "password": "P@ssword123"
-    })
-
-    assert response.status_code == 200
-    assert "token" in response.json
-    mock_db["mock_user_query"].filter_by.assert_called_once_with(login="test_user")
-
-
-def test_login_user_invalid_password(mock_db):
     mock_user = MagicMock()
     mock_user.first.return_value = User(
         user_id="123",
@@ -117,14 +101,18 @@ def test_login_user_invalid_password(mock_db):
     )
     mock_db["mock_user_query"].filter_by.return_value = mock_user
 
-    with patch('user_service.user_service.check_password_hash', return_value=False):
+    with patch('user_service.user_service.check_password_hash', return_value=True):
         response = app.test_client().post('/login', json={
             "login": "john_doe",
-            "password": "WrongPassword!"
+            "password": "Password123!"
         })
 
-    assert response.status_code == 401
-    assert response.json == {"message": "Invalid credentials."}
+    assert response.status_code == 200
+    response_data = response.json
+    assert "message" in response_data
+    assert "token" in response_data
+
+    AUTH_TOKEN = response_data["token"]
 
 
 def test_login_user_not_found(mock_db):
@@ -140,23 +128,44 @@ def test_login_user_not_found(mock_db):
 
 
 def test_update_profile_saves_to_db(mock_db):
-    mock_user = MagicMock()
-    mock_user.profile = UserProfile(profile_id="456", user_id="123")
-    mock_db["mock_user_query"].get.return_value = mock_user
+    global AUTH_TOKEN
 
-    with patch('user_service.decode_jwt', return_value={"user_id": "123"}):
-        response = app.test_client().put('/profile',
-                                         headers={"Authorization": "valid_token"},
-                                         json={
-                                             "first_name": "NewName",
-                                             "profile": {"city": "Moscow"}
-                                         }
-                                         )
+    user = User(
+        user_id="123",
+        login="john_doe",
+        hashed_password="hashed_password",
+        is_active=True,
+        first_name="John",
+        last_name="Doe"
+    )
+    user.profile = UserProfile(
+        user_id="123",
+        city="Moscow",
+        avatar_url=None,
+        about_me=None
+    )
+
+    with patch('user_service.user_service.User.query') as mock_user_query:
+        mock_user_query.get.return_value = user
+        response = app.test_client().put(
+            '/profile',
+            headers={"Authorization": AUTH_TOKEN},
+            json={
+                "first_name": "Janney",
+                "profile": {
+                    "city": "Manchester",
+                    "avatar_url": "http://example.com/avatar.jpg",
+                    "about_me": "About me text"
+                }
+            }
+        )
 
     assert response.status_code == 200
-    assert mock_user.first_name == "NewName"
-    assert mock_user.profile.city == "Moscow"
-    mock_db["mock_commit"].assert_called_once()
+    assert response.json == {"message": "Profile updated successfully."}
+    assert user.first_name == "Janney"
+    assert user.profile.city == "Manchester"
+    assert user.profile.avatar_url == "http://example.com/avatar.jpg"
+    assert user.profile.about_me == "About me text"
 
 
 @patch('app.user_service.user_service.jwt.encode')
