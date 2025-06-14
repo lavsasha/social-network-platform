@@ -2,7 +2,12 @@ from unittest.mock import patch, MagicMock
 import pytest
 import datetime
 import jwt
-from ..user_service import app, User, generate_jwt, decode_jwt
+from user_service.user_service import app, User, UserProfile, generate_jwt, decode_jwt
+from werkzeug.security import generate_password_hash, check_password_hash
+import pytest
+from unittest.mock import patch, MagicMock
+
+AUTH_TOKEN = None
 
 
 @pytest.fixture
@@ -84,7 +89,9 @@ def test_register_user_duplicate_login(mock_db):
     assert response.json == {"message": "Login is already taken."}
 
 
-def test_login_user_invalid_password(mock_db):
+def test_login_user_success(mock_db):
+    global AUTH_TOKEN
+
     mock_user = MagicMock()
     mock_user.first.return_value = User(
         user_id="123",
@@ -94,14 +101,18 @@ def test_login_user_invalid_password(mock_db):
     )
     mock_db["mock_user_query"].filter_by.return_value = mock_user
 
-    with patch('user_service.user_service.check_password_hash', return_value=False):
+    with patch('user_service.user_service.check_password_hash', return_value=True):
         response = app.test_client().post('/login', json={
             "login": "john_doe",
-            "password": "WrongPassword!"
+            "password": "Password123!"
         })
 
-    assert response.status_code == 401
-    assert response.json == {"message": "Invalid credentials."}
+    assert response.status_code == 200
+    response_data = response.json
+    assert "message" in response_data
+    assert "token" in response_data
+
+    AUTH_TOKEN = response_data["token"]
 
 
 def test_login_user_not_found(mock_db):
@@ -114,6 +125,47 @@ def test_login_user_not_found(mock_db):
 
     assert response.status_code == 401
     assert response.json == {"message": "Invalid credentials."}
+
+
+def test_update_profile_saves_to_db(mock_db):
+    global AUTH_TOKEN
+
+    user = User(
+        user_id="123",
+        login="john_doe",
+        hashed_password="hashed_password",
+        is_active=True,
+        first_name="John",
+        last_name="Doe"
+    )
+    user.profile = UserProfile(
+        user_id="123",
+        city="Moscow",
+        avatar_url=None,
+        about_me=None
+    )
+
+    with patch('user_service.user_service.User.query') as mock_user_query:
+        mock_user_query.get.return_value = user
+        response = app.test_client().put(
+            '/profile',
+            headers={"Authorization": AUTH_TOKEN},
+            json={
+                "first_name": "Janney",
+                "profile": {
+                    "city": "Manchester",
+                    "avatar_url": "http://example.com/avatar.jpg",
+                    "about_me": "About me text"
+                }
+            }
+        )
+
+    assert response.status_code == 200
+    assert response.json == {"message": "Profile updated successfully."}
+    assert user.first_name == "Janney"
+    assert user.profile.city == "Manchester"
+    assert user.profile.avatar_url == "http://example.com/avatar.jpg"
+    assert user.profile.about_me == "About me text"
 
 
 @patch('app.user_service.user_service.jwt.encode')

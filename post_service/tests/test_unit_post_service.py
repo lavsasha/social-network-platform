@@ -8,6 +8,7 @@ from db.post_db import PostDB, PostDBError, NotFoundError, InvalidArgumentError,
 mock_kafka_producer = MagicMock()
 with patch.dict('sys.modules', {'broker.kafka_producer': mock_kafka_producer}):
     from api.post_grpc_service import PostServiceServicer
+from sqlalchemy.exc import SQLAlchemyError
 
 
 class DummyContext:
@@ -31,6 +32,36 @@ def dummy_context():
 def servicer():
     mock_db = MagicMock(spec=PostDB)
     return PostServiceServicer(mock_db), mock_db
+
+
+def test_create_post_success(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.create_post.return_value = post_pb2.CreatePostResponse(post_id="1",
+                                                                   created_at=datetime.utcnow().isoformat())
+    request = post_pb2.CreatePostRequest(
+        title="Post",
+        description="Description",
+        creator_id="User",
+        is_private=False,
+        tags=["test"]
+    )
+    response = service.CreatePost(request, dummy_context)
+    assert response.post_id == "1"
+    assert dummy_context.code is None
+
+
+def test_create_post_db_error(servicer, dummy_context):
+    service, mock_db = servicer
+    mock_db.create_post.side_effect = SQLAlchemyError("DB error")
+    request = post_pb2.CreatePostRequest(
+        title="Post",
+        description="Description",
+        creator_id="User",
+        is_private=False,
+        tags=["test"]
+    )
+    _ = service.CreatePost(request, dummy_context)
+    assert dummy_context.code == grpc.StatusCode.INTERNAL
 
 
 def test_delete_post_success(servicer, dummy_context):

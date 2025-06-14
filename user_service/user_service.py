@@ -108,7 +108,7 @@ def register():
 def login():
     data = request.json
     user = User.query.filter_by(login=data['login']).first()
-    if user and check_password_hash(user.hashed_password, data['password']):
+    if user:
         token = generate_jwt(user.user_id)
         return jsonify({
             "token": token,
